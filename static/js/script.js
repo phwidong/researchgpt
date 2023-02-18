@@ -11,7 +11,51 @@ const p = document.querySelector("p");
 const up = document.querySelector("#up");
 const y = document.querySelector("#url");
 const send = document.querySelector("#send");
+const api_key = document.querySelector("#api-key");
+const api_input = document.querySelector("input[name='api-key']");
+const save = document.querySelector(".save_btn");
 
+api_key.addEventListener("submit", function(event) {
+  event.preventDefault();
+  const openai_key = api_input.value;
+  if (openai_key === "") {
+    api_input.value = "Error: Please enter an API key";
+    return;
+  // save the API key to a window variable
+  } else {
+    window.api_key = openai_key;
+  }
+});
+
+async function embeddings(df) {
+  console.log('Calculating embeddings');
+  const openaiApiKey = window.api_key;
+  const embeddingModel = "text-embedding-ada-002";
+  const embeddings = await Promise.all(df.map(async (row) => {
+    const text = row.text;
+    const response = await axios.post('https://api.openai.com/v1/engines/'+embeddingModel+'/completions', {
+      prompt: text,
+      max_tokens: 1,
+      n: 1,
+      stop: '',
+      temperature: 0,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    }, {
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data.choices[0].text;
+  }));
+  df.map((row, index) => {
+    row["embeddings"] = embeddings[index];
+    return row;
+  });
+  console.log('Done calculating embeddings');
+  return df;
+}
 
 send.addEventListener("click", function(event) {
   event.preventDefault();
@@ -30,6 +74,17 @@ send.addEventListener("click", function(event) {
   loading.style.fontSize = "14px";
   loading.innerHTML = "Loading...";
   chat.appendChild(loading);
+
+  // call the endpoint /prompt with the message and get the prompt.
+  fetch('/prompt', {
+      method: 'POST',
+      body: JSON.stringify({'query': message, 'key': window.key}),
+      headers: {
+          'Content-Type': 'application/json'
+      }
+  })
+  .then(response => response.json())
+  
 
   // call the endpoint /reply with the message and get the reply.
   fetch('/reply', {
@@ -149,8 +204,9 @@ y.addEventListener("submit", function(event) {
         window.key = data.key;
       })
       .catch(error => {
-        uploadBtn.innerHTML = "Error: Request to server failed. Please try again. Check the URL if there is https:// at the beginning. If not, add it.";
-        x.innerHTML = "Error: Request to server failed. Please try again. Check the URL if there is https:// at the beginning. If not, add it.";
+        uploadBtn.innerHTML = "Error: You are on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version.";
+        loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+        x.innerHTML = "Error: Request to server failed. Please try uploading the pdf instead. Sorry for the inconvenience!";
         console.error(error);
       });
 });
@@ -179,13 +235,28 @@ input.addEventListener("change", async function() {
       }
   })
   .then(response => response.json())
-  // Append the reply to #chat as a simple paragraph without any styling
   .then(data => {
     chat.removeChild(loading);
     window.key = data.key;
+    e = embeddings(data.df)
+    fetch('/save', {
+      method: 'POST',
+      body: JSON.stringify({'key': data.key, 'df': e}),
+      headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
+      })
+      .then(response => response.json())
+      .then(data => {
+        window.key = data.key;
+        console.log(data);
+    })
   })
   .catch(error => {
-    loading.innerHTML = "Error: Processing the pdf failed due to excess load. Please try again later.  Check the URL if there is https:// at the beginning. If not, add it.";
+    loading.innerHTML = "Error: Request to server failed. Your pdf might not be compatible. Try entering a link to a version hosted online. Make sure it ends with .pdf. Sorry for the inconvenience!";
     console.error(error);
   });
     
