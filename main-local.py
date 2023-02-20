@@ -5,16 +5,21 @@ import pandas as pd
 from openai.embeddings_utils import get_embedding, cosine_similarity
 import openai
 import os
-import requests
+import base64
 from flask_cors import CORS
+from _md5 import md5
+import redis
+import json
 
 app = Flask(__name__)
-CORS(app)
 
+db = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+CORS(app)
 
 class Chatbot():
     
-    def parse_paper(self, pdf):
+    def extract_text(self, pdf):
         print("Parsing paper")
         number_of_pages = len(pdf.pages)
         print(f"Total number of pages: {number_of_pages}")
@@ -66,31 +71,32 @@ class Chatbot():
         # print(paper_text)
         return paper_text
 
-    def paper_df(self, pdf):
+    def create_df(self, pdf):
         print('Creating dataframe')
         filtered_pdf= []
+        # print(pdf.pages[0].extract_text())
         for row in pdf:
             if len(row['text']) < 30:
                 continue
             filtered_pdf.append(row)
         df = pd.DataFrame(filtered_pdf)
-        # print(df.shape)
+        print(df.columns)
         # remove elements with identical df[text] and df[page] values
         df = df.drop_duplicates(subset=['text', 'page'], keep='first')
-        df['length'] = df['text'].apply(lambda x: len(x))
+        # df['length'] = df['text'].apply(lambda x: len(x))
         print('Done creating dataframe')
         return df
 
-    def calculate_embeddings(self, df):
+    def embeddings(self, df):
         print('Calculating embeddings')
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+        # openai.api_key = os.getenv('OPENAI_API_KEY')
         embedding_model = "text-embedding-ada-002"
         embeddings = df.text.apply([lambda x: get_embedding(x, engine=embedding_model)])
         df["embeddings"] = embeddings
         print('Done calculating embeddings')
         return df
 
-    def search_embeddings(self, df, query, n=3, pprint=True):
+    def search(self, df, query, n=3, pprint=True):
         query_embedding = get_embedding(
             query,
             engine="text-embedding-ada-002"
@@ -100,16 +106,17 @@ class Chatbot():
         results = df.sort_values("similarity", ascending=False, ignore_index=True)
         # make a dictionary of the the first three results with the page number as the key and the text as the value. The page number is a column in the dataframe.
         results = results.head(n)
-        global sources 
         sources = []
         for i in range(n):
             # append the page number and the text as a dict to the sources list
             sources.append({'Page '+str(results.iloc[i]['page']): results.iloc[i]['text'][:150]+'...'})
         print(sources)
-        return results.head(n)
+        return {'results': results, 'sources': sources}
     
     def create_prompt(self, df, user_input):
-        result = self.search_embeddings(df, user_input, n=3)
+        response = self.search(df, user_input, n=3)
+        result = response['results']
+        sources = response['sources']
         print(result)
         prompt = """You are a large language model whose expertise is reading and summarizing scientific papers. 
         You are given a query and a series of text embeddings from a paper in order of their cosine similarity to the query.
@@ -126,9 +133,9 @@ class Chatbot():
             Return a detailed answer based on the paper:"""
 
         print('Done creating prompt')
-        return prompt
+        return {'prompt': prompt, 'sources': sources}
 
-    def gpt(self, prompt):
+    def gpt(self, prompt, sources):
         print('Sending request to GPT-3')
         openai.api_key = os.getenv('OPENAI_API_KEY')
         r = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.4, max_tokens=1500)
@@ -137,51 +144,100 @@ class Chatbot():
         response = {'answer': answer, 'sources': sources}
         return response
 
-    def reply(self, prompt):
-        print(prompt)
-        prompt = self.create_prompt(df, prompt)
-        return self.gpt(prompt)
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
 
+# a route to get the dataframe from the database
+@app.route("/get_df", methods=['POST'])
+def get_df():
+    print('Getting dataframe')
+    key = request.json['key']
+    print(key)
+    df = pd.DataFrame(json.loads(db.get(key)))
+    print('Done getting dataframe')
+    json_str = df.to_json(orient='records')
+    print(len(json_str))
+    print("Done processing pdf")
+    return {"df": json_str}
+
+# re-writing process_pdf to to just create the dataframe and send it to the frontend
 @app.route("/process_pdf", methods=['POST'])
 def process_pdf():
     print("Processing pdf")
+    print(request)
+
     file = request.data
+
+    key = md5(file).hexdigest()
+    print(key)
+
+    if db.get(key) is not None:
+        print("File already exists")
+        return {"key": key, "exists": True}
+
     pdf = PdfReader(BytesIO(file))
     chatbot = Chatbot()
-    paper_text = chatbot.parse_paper(pdf)
-    global df
-    df = chatbot.paper_df(paper_text)
-    df = chatbot.calculate_embeddings(df)
+    paper_text = chatbot.extract_text(pdf)
+    df = chatbot.create_df(paper_text)
+
+    json_str = df.to_json(orient='records')
+    print(len(json_str))
     print("Done processing pdf")
-    return {'key': ''}
+    return {"key": key, "df": json_str}
+
+# a function save that takes in a dataframe and saves it to gcs
+@app.route("/save", methods=['POST'])
+def save():
+    print("Saving df to gcs")
+    print(request.json)
+    print(request.json['df'])
+    print(request.json['key'])
+    df = request.json['df']
+    key = request.json['key']
+
+    df = pd.DataFrame.from_dict(df)
+
+    if df.empty:
+        return {"error": "No data found"}
+
+    if db.get(key) is None:
+        db.set(key, df.to_json())
+    else:
+        print("File already exists")
+        return {"key": key, "exists": True}
+    
+    print("Done processing pdf")
+    return {"key": key, "exists": False}
 
 @app.route("/download_pdf", methods=['POST'])
 def download_pdf():
+
+    print("Downloading pdf")
+    # print(request.json)
     chatbot = Chatbot()
     url = request.json['url']
-    r = requests.get(str(url))
-    print(r.headers)
-    pdf = PdfReader(BytesIO(r.content))
-    paper_text = chatbot.parse_paper(pdf)
-    global df
-    df = chatbot.paper_df(paper_text)
-    df = chatbot.calculate_embeddings(df)
-    print("Done processing pdf")
-    return {'key': ''}
+    data = request.json['data']
+    data = base64.b64decode(data)
 
-@app.route("/reply", methods=['POST'])
-def reply():
-    chatbot = Chatbot()
-    query = request.json['query']
-    query = str(query)
-    prompt = chatbot.create_prompt(df, query)
-    response = chatbot.gpt(prompt)
-    print(response)
-    return response, 200
+    print(url)
+    # r = requests.get(str(url))    
+    # print("Downloading pdf")
+    # print(r.status_code)
+    key = md5(data).hexdigest()
+
+    if db.get(key) is not None:
+        print("File already exists")
+        return {"key": key, "exists": True}
+
+    pdf = PdfReader(BytesIO(data))
+    paper_text = chatbot.extract_text(pdf)
+    df = chatbot.create_df(paper_text)
+
+    json_str = df.to_json(orient='records')
+    print(len(json_str))
+    print("Done processing pdf")
+    return {"key": key, "df": json_str}
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='127.0.0.1', port=8080, debug=True)

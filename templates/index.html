@@ -3,11 +3,12 @@
   <head>
     <script src="static/js/script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/build/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="static/css/styles.css">
   </head>
   <body>
 
-    <form id='url' style="margin-top: 300px; margin-bottom: 20px; width: 100%; text-align: center;">
+    <form id='url' style="margin-top: 380px; margin-bottom: 20px; width: 100%; text-align: center;">
         <input type="text" name="pdf-url" placeholder="Enter URL" style="color: lightgray; padding: 10px; border: none; background-color: black; font: 1.2em Roboto; font-style: italic; width: 100%; text-align: center">
     </form>
 
@@ -18,10 +19,10 @@
       <input type="file" accept=".pdf" id="file-input"/>
     </form>
 
-    <form id='api_key' style="margin-top: 10px; display: flex; margin-bottom: 20px; margin-left: 100px; width: 100%; text-align: center; justify-content: center;">
-      <input type="text" id="api" name="api_key" placeholder="Enter your OpenAI API key" style="color: lightgray; padding: 10px; border: none; background-color: black; font: 1.2em Roboto; font-style: italic; text-align: center">
+    <!-- <form id='api-key' style="margin-top: 10px; display: flex; margin-bottom: 20px; margin-left: 100px; width: 100%; text-align: center; justify-content: center;">
+      <input type="text" id="api" name="api-key" placeholder="Enter your OpenAI API key" style="color: lightgray; padding: 10px; border: none; background-color: black; font: 1.2em Roboto; font-style: italic; text-align: center">
       <label for="api" class="save-btn">Save</label>
-    </form>
+    </form> -->
 
     <div id="container">
         <iframe id="pdf-viewer" class="pdf-viewer" style="border-width: 0"></iframe> 

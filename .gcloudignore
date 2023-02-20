@@ -13,6 +13,9 @@
 .git
 .gitignore
 main-local.py
+Procfile
+dump.rdb
+/.ipynb_checkpoints
 
 # Python pycache:
 __pycache__/

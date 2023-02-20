@@ -24,6 +24,16 @@ body {
     display: flex;
 }
 
+.save-btn {
+    color: white;
+    background-color: black;
+    border: 2px solid white;
+    border-radius: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    display: flex;
+}
+
 input[type="file"] {
     display: none;
 }
