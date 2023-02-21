@@ -59,7 +59,14 @@ document.addEventListener("DOMContentLoaded", function() {
           model: embeddingModel
         })
       });
+      // Call the json method on the response to get the data
       const data = await response.json();
+      // If there is an error, log it
+      // if (data.error) {
+      //   loading.innerHTML = 'Error: ' + data.error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
+      //   console.log(data.error);
+      //   return;
+      // }
       df[i]["embeddings"] = data.data[0].embedding;
     }
   
@@ -117,7 +124,11 @@ document.addEventListener("DOMContentLoaded", function() {
   }  
 
   async function create_prompt(user_input) {
-
+    // check if pdf-key is not null
+    if (sessionStorage.getItem("pdf-key") === null || sessionStorage.getItem("pdf-key") === "" || sessionStorage.getItem("pdf-key") === "undefined") {
+      alert("Please upload a PDF file first or refresh the page and try again.");
+      return;
+    }
     const response = await fetch('/get_df', {
       method: 'POST',
       headers: {
@@ -127,9 +138,18 @@ document.addEventListener("DOMContentLoaded", function() {
           'key': sessionStorage.getItem("pdf-key"),
           'query': user_input,
           })
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        document.getElementById('loading').innerHTML = 'Error: ' + error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
       });
     const data = await response.json();
     df = data.df;
+    if (data.error) {
+      alert(data.error);
+      document.getElementById('loading').innerHTML = 'Error: ' + error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
+      return;
+    }
     df = JSON.parse(df);
     const x = await search(df, user_input);
     const result = x.results;
@@ -196,9 +216,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         sessionStorage.setItem("openai_key", input);
         alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
-        
-        sessionStorage.setItem("openai_key", input);
-        alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
+
         return;
     }
   });
@@ -296,6 +314,10 @@ document.addEventListener("DOMContentLoaded", function() {
       x.value = "Loading...";
       console.log(url);
 
+      document.querySelector("input[name='chat']").value = "Please wait while the PDF is being loaded...";
+      // make  document.querySelector("input[name='chat']") read-only
+      document.querySelector("input[name='chat']").readOnly = true;
+
 
     fetch(url)
     .then(response => response.blob())
@@ -322,7 +344,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const reader = new FileReader();
         reader.readAsDataURL(pdfBlob);
-        reader.onloadend = function() {
+        reader.onloadend = () => {
             const pdfData = reader.result.split(',')[1];
             const body = JSON.stringify({'url': url, 'data': pdfData});
             fetch('/download_pdf', {
@@ -336,13 +358,17 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             })
             .then(response => response.json())
-            .then(data => {
+            .then(data => { 
+              console.log('hello');
               var loading = document.getElementById("loading");
-              chat.removeChild(loading);
-              // window.key = data.key;
+              window.key = data.key;
               sessionStorage.setItem("pdf-key", data.key);
-              if (data.exists) {
-                loading.innerHTML = "";
+              // if (data.exists) is true, then return
+              if (data.exists === true) {
+                console.log("Embeddings already exist");
+                chat.removeChild(loading);
+                document.querySelector("input[name='chat']").readOnly = false;
+                document.querySelector("input[name='chat']").value = "";
                 return;
               }
               e = embeddings(data.df)
@@ -351,7 +377,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Make a post request to /save with the key and embeddings
                 fetch('/save', {
                   method: 'POST',
-                  body: JSON.stringify({'key': data.key, 'df': e}),
+                  body: JSON.stringify({'key': window.key, 'df': e}),
                   headers: {
                       'Content-Type': 'application/json',
                       'Access-Control-Allow-Origin': '*',
@@ -362,22 +388,31 @@ document.addEventListener("DOMContentLoaded", function() {
                   .then(response => response.json())
                   .then(data => {
                     // window.key = data.key;
+                    loading = document.getElementById("loading");
+                    chat.removeChild(loading);
+                    document.querySelector("input[name='chat']").readOnly = false;
+                    document.querySelector("input[name='chat']").value = "";
                     sessionStorage.setItem("pdf-key", data.key);
                     // console.log(data);
                   })
                   .catch(error => {
-                  console.error(error);
+                    loading = document.getElementById("loading");
+                    loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+                    console.error(error);
               });
               })
               .catch(error => {
                   console.error(error);
+                  loading = document.getElementById("loading");
+                  loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+                  alert("Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!");
               });
         })
         .catch(error => {
           loading = document.getElementById("loading");
           x.value = "Error: Request to server failed. Please try uploading the pdf instead. Sorry for the inconvenience!";
-          // uploadBtn.innerHTML = "Error: You might be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version.";
-          loading.value = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+          uploadBtn.innerHTML = "Error: You might be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version.";
+          loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
           console.error(error);
         });
       }
@@ -401,7 +436,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const fileArrayBuffer = await file.arrayBuffer();
     // console.log(fileArrayBuffer);
 
+    document.querySelector("input[name='chat']").value = "Please wait while the PDF is being loaded...";
+    // make  document.querySelector("input[name='chat']") read-only
+    document.querySelector("input[name='chat']").readOnly = true;
+
     var loading = document.createElement("p");
+    loading.id = "loading";
     loading.style.color = "lightgray";
     loading.style.fontSize = "14px";
     loading.innerHTML = "Calculating embeddings...";
@@ -421,10 +461,12 @@ document.addEventListener("DOMContentLoaded", function() {
     })
     .then(response => response.json())
     .then(data => {
-      chat.removeChild(loading);
-      // window.key = data.key;
+      window.key = data.key;
       sessionStorage.setItem("pdf-key", data.key);
-      if (data.exists) {
+      if (data.exists === true) {
+        console.log("Embeddings already exist");
+        document.querySelector("input[name='chat']").readOnly = false;
+        document.querySelector("input[name='chat']").value = "";
         loading.innerHTML = "";
         return;
       }
@@ -434,7 +476,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Make a post request to /save with the key and embeddings
         fetch('/save', {
           method: 'POST',
-          body: JSON.stringify({'key': data.key, 'df': e}),
+          body: JSON.stringify({'key': window.key, 'df': e}),
           headers: {
               'Content-Type': 'application/json',
               'Access-Control-Allow-Origin': '*',
@@ -445,15 +487,23 @@ document.addEventListener("DOMContentLoaded", function() {
           .then(response => response.json())
           .then(data => {
             // window.key = data.key;
-            sessionStorage.setItem("pdf-key", data.key);
-            // console.log(data);
+            // sessionStorage.setItem("pdf-key", data.key);
+            loading = document.getElementById("loading");
+            chat.removeChild(loading);
+            console.log(data);
+            document.querySelector("input[name='chat']").readOnly = false;
+            document.querySelector("input[name='chat']").value = "";
           })
           .catch(error => {
-          console.error(error);
+            loading = document.getElementById("loading");
+            loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+            console.error(error);
       });
     });
     })
     .catch(error => {
+      loading = document.getElementById("loading");
+      uploadBtn.innerHTML = "Error: Request to server failed. You may be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version. Sorry for the inconvenience!";
       loading.innerHTML = "Error: Request to server failed. Your pdf might not be compatible. Try entering a link to a version hosted online. Make sure it ends with .pdf. Sorry for the inconvenience!";
       console.error(error);
     });

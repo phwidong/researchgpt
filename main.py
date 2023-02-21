@@ -96,6 +96,10 @@ def get_df():
     key = request.json['key']
     print(key)
 
+    if key is None or key == '' or key == 'null' or key == 'undefined':
+        print("No key found")
+        return {"error": "No key found"}
+
     query = request.json['query']
     print(query)
     
@@ -104,12 +108,13 @@ def get_df():
     name = key+'.json'
     bucket = gcs.get_bucket(CLOUD_STORAGE_BUCKET)
     blob = bucket.blob(name)
+    if not blob.exists():
+        return {"error": "File does not exist"}
     df = pd.read_json(BytesIO(blob.download_as_string()))
 
     print('Done getting dataframe')
     json_str = df.to_json(orient='records')
     # print(len(json_str))
-    print("Done processing pdf")
     return {"df": json_str}
 
 # re-writing process_pdf to to just create the dataframe and send it to the frontend

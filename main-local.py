@@ -157,7 +157,7 @@ def get_df():
     df = pd.DataFrame(json.loads(db.get(key)))
     print('Done getting dataframe')
     json_str = df.to_json(orient='records')
-    print(len(json_str))
+    # print(len(json_str))
     print("Done processing pdf")
     return {"df": json_str}
 
