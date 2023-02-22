@@ -3,11 +3,11 @@ from io import BytesIO
 from PyPDF2 import PdfReader
 import pandas as pd
 import os
-import requests
 from flask_cors import CORS
 from _md5 import md5
 from google.cloud import storage
 import base64
+import json
 
 app = Flask(__name__)
 
@@ -67,7 +67,6 @@ class Chatbot():
                     blob_text = t['text']
                 paper_text += processed_text
         print("Done parsing paper")
-        # print(paper_text)
         return paper_text
 
     def create_df(self, pdf):
@@ -88,6 +87,10 @@ class Chatbot():
 @app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
+
+@app.route("/favicon.ico", methods=["GET"])
+def icon():
+    return render_template("favicon.ico")
 
 # a route to get the dataframe from the database
 @app.route("/get_df", methods=['POST'])

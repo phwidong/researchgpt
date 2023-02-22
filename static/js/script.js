@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", function() {
   const y = document.querySelector("#url");
   const send = document.querySelector("#send");
 
+  x.value = "";
+
   window.onload = function() {
     // check if the user has already saved an API key
     if (sessionStorage.getItem("openai_key") === null) {
@@ -117,9 +119,11 @@ document.addEventListener("DOMContentLoaded", function() {
       return {...row, similarity};
     }).sort((a, b) => b.similarity - a.similarity).slice(0, n);
   
-    const sources = results.map((result, i) => ({
-      [`Page ${i + 1}`]: result.text.slice(0, 150) + "..."
-    }));
+    const sources = results.map((result) => {
+      const pageNumber = `Page ${result.page}`;
+      const textSnippet = result.text.slice(0, 150) + "...";
+      return {[pageNumber]: textSnippet};
+    });
   
     console.log(sources);
   
