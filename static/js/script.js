@@ -36,6 +36,13 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   };
 
+  x.addEventListener("focus", function() {
+    if (this.value === "Enter URL") {
+    this.value = "";
+    this.style.color = "black";
+    }
+  });
+
   async function embeddings(df) {
     console.log('Calculating embeddings');
     const openaiApiKey = sessionStorage.getItem("openai_key");
@@ -45,33 +52,32 @@ document.addEventListener("DOMContentLoaded", function() {
     // Use a for loop to wait for the response from the API before continuing
     for (let i = 0; i < df.length; i++) {
       const text = df[i].text;
-      const response = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        },
-        body: JSON.stringify({
-          input: text,
-          model: embeddingModel
-        })
-      });
-      // Call the json method on the response to get the data
-      const data = await response.json();
-      // If there is an error, log it
-      // if (data.error) {
-      //   loading.innerHTML = 'Error: ' + data.error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
-      //   console.log(data.error);
-      //   return;
-      // }
-      df[i]["embeddings"] = data.data[0].embedding;
+      try {
+        const response = await fetch('https://api.openai.com/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: text,
+            model: embeddingModel
+          })
+        });
+        // Call the json method on the response to get the data
+        const data = await response.json();
+        // if the response is an error, log it and return
+        if (data.error) {
+          console.log(`Error calculating embedding for text: ${text}`, data.error);
+          return "error";
+        }
+        df[i]["embeddings"] = data.data[0].embedding;
+      } catch (error) {
+        console.log(`Error calculating embedding for text: ${text}`, error);
+        return "error";
+      }
     }
-  
     console.log('Done calculating embeddings');
-    // console.log(df.slice(0, 10));
     return df;
   }
   
@@ -140,7 +146,7 @@ document.addEventListener("DOMContentLoaded", function() {
           })
       })
       .catch((error) => {
-        console.error('Error:', error);
+        console.log('Error:', error);
         document.getElementById('loading').innerHTML = 'Error: ' + error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
       });
     const data = await response.json();
@@ -273,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function() {
     })
     .catch(error => {
       chat.removeChild(loading);
-      console.error(error);
+      console.log(error);
 
       const errorMessage = document.createElement("p");
       errorMessage.style.color = "red";
@@ -285,228 +291,172 @@ document.addEventListener("DOMContentLoaded", function() {
   });
   });
 
-  x.addEventListener("focus", function() {
-      if (this.value === "Enter URL") {
-      this.value = "";
-      this.style.color = "black";
-      }
-  });
-
-  y.addEventListener("submit", function(event) {
-      event.preventDefault();
-      // Check if openai_key is set in sessionStorage
-      if (sessionStorage.getItem("openai_key") === null) {
-        // If not, prompt the user to enter their OpenAI API key
-          var input = prompt("Please enter your OpenAI API key first. Don't worry, it will be saved only in your browser's local storage.");
-          sessionStorage.setItem("openai_key", input);
-          alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
-          return;
-      }
-      const url = this.elements["pdf-url"].value;
-      if (url === "") {
-          return;
-      }
-      // if the url does not end with .pdf, make x.value = "Error: URL does not end with .pdf"
-      if (!url.endsWith(".pdf")) {
-          x.value = "Error: URL does not end with .pdf";
-          return;
-      }
+  y.addEventListener("submit", async function(event) {
+    event.preventDefault();
+    // Check if openai_key is set in sessionStorage
+    const openaiKey = sessionStorage.getItem("openai_key");
+    if (!openaiKey) {
+      // If not, prompt the user to enter their OpenAI API key
+      const input = prompt("Please enter your OpenAI API key first. Don't worry, it will be saved only in your browser's local storage.");
+      sessionStorage.setItem("openai_key", input);
+      alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
+      return;
+    }
+  
+    const url = this.elements["pdf-url"].value;
+    if (url === "") {
+      return;
+    }
+  
+    // if the url does not end with .pdf, set error messages
+    if (!url.endsWith(".pdf")) {
+      x.value = "Error: URL does not end with .pdf";
+      return;
+    }
+  
+    try {
       x.value = "Loading...";
       console.log(url);
+  
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Failed to download PDF.");
+      }
+  
+      const pdfBlob = await response.blob();
+  
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      // const pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+  
+      viewer.src = pdfUrl;
+      uploadBtn.style.display = "none";
+      form.style.display = "none";
+      form.style.marginTop = "0px";
+      p.style.display = "none";
+      up.style.display = "none";
+      container.style.display = "flex";
+      viewer.style.display = "block";
 
-      document.querySelector("input[name='chat']").value = "Please wait while the PDF is being loaded...";
-      // make  document.querySelector("input[name='chat']") read-only
-      document.querySelector("input[name='chat']").readOnly = true;
-
-
-    fetch(url)
-    .then(response => response.blob())
-    .then(pdfBlob => {
-        // console.log(pdfBlob);
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        pdfjsLib.getDocument(pdfUrl).promise.then(pdfDoc => {
-            viewer.src = pdfUrl;
-            uploadBtn.style.display = "none";
-            form.style.display = "none";
-            form.style.marginTop = "0px";
-            p.style.display = "none";
-            up.style.display = "none";
-            container.style.display = "flex";
-            viewer.style.display = "block";
+      const chatInput = document.querySelector("input[name='chat']");
+      chatInput.value = "Please wait while the PDF is being loaded...";
+      chatInput.readOnly = true;
+  
+      const loading = document.createElement("p");
+      loading.id = "loading";
+      loading.style.color = "lightgray";
+      loading.style.fontSize = "14px";
+      loading.innerHTML = "Calculating embeddings...";
+      chat.appendChild(loading);
+  
+      const reader = new FileReader();
+      reader.readAsDataURL(pdfBlob);
+      reader.onloadend = async () => {
+        const pdfData = reader.result.split(",")[1];
+        const body = JSON.stringify({ url, data: pdfData });
+  
+        const downloadResponse = await fetch("/download_pdf", {
+          method: "POST",
+          body,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          },
         });
+        const downloadData = await downloadResponse.json();
+  
+        window.key = downloadData.key;
+        sessionStorage.setItem("pdf-key", downloadData.key);
+  
+        // if (downloadData.exists) is true, then return
+        if (downloadData.exists === true) {
+          console.log("Embeddings already exist");
+          chat.removeChild(loading);
+          document.querySelector("input[name='chat']").readOnly = false;
+          document.querySelector("input[name='chat']").value = "";
+          return;
+        }
+  
+        try {
+          const e = await embeddings(downloadData.df);
 
-        var loading = document.createElement("p");
-        loading.id = "loading";
-        loading.style.color = "lightgray";
-        loading.style.fontSize = "14px";
-        loading.innerHTML = "Calculating embeddings...";
-        chat.appendChild(loading);
-
-        const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
-        reader.onloadend = () => {
-            const pdfData = reader.result.split(',')[1];
-            const body = JSON.stringify({'url': url, 'data': pdfData});
-            fetch('/download_pdf', {
-                method: 'POST',
-                body: body,
+          // if e is null or undefined or error, then return. Don't save the embeddings
+          if (e === "error") {
+            console.log("Embeddings could not be calculated");
+            loading = document.getElementById("loading");
+            loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
+            alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
+            return false;
+          } else if (e === null || e === undefined) {
+            console.log("Embeddings could not be calculated");
+            loading = document.getElementById("loading");
+            loading.innerHTML = "Error: Embeddings could not be calculated. Please try again later.";
+            alert("Error: Embeddings could not be calculated. Please try again later.");
+            return false;
+          } else {
+              // Make a post request to /save with the key and embeddings
+              const saveResponse = await fetch("/save", {
+                method: "POST",
+                body: JSON.stringify({ key: window.key, df: e }),
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-                }
-            })
-            .then(response => response.json())
-            .then(data => { 
-              console.log('hello');
-              var loading = document.getElementById("loading");
-              window.key = data.key;
-              sessionStorage.setItem("pdf-key", data.key);
-              // if (data.exists) is true, then return
-              if (data.exists === true) {
-                console.log("Embeddings already exist");
-                chat.removeChild(loading);
-                document.querySelector("input[name='chat']").readOnly = false;
-                document.querySelector("input[name='chat']").value = "";
+                  "Content-Type": "application/json",
+                  "Access-Control-Allow-Origin": "*",
+                  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+                  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                },
+              });
+      
+              const saveData = await saveResponse.json();
+              chat.removeChild(loading);
+              document.querySelector("input[name='chat']").readOnly = false;
+              document.querySelector("input[name='chat']").value = "";
+
+              console.log(saveData);
+              // if (saveData.success) is true, then return
+              if (saveData.success === true) {
+                console.log("Embeddings saved successfully");
                 return;
               }
-              e = embeddings(data.df)
-              .then(e => {
-                // console.log(e);
-                // Make a post request to /save with the key and embeddings
-                fetch('/save', {
-                  method: 'POST',
-                  body: JSON.stringify({'key': window.key, 'df': e}),
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Access-Control-Allow-Origin': '*',
-                      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-                      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-                  }
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    // window.key = data.key;
-                    loading = document.getElementById("loading");
-                    chat.removeChild(loading);
-                    document.querySelector("input[name='chat']").readOnly = false;
-                    document.querySelector("input[name='chat']").value = "";
-                    sessionStorage.setItem("pdf-key", data.key);
-                    // console.log(data);
-                  })
-                  .catch(error => {
-                    loading = document.getElementById("loading");
-                    loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
-                    console.error(error);
-              });
-              })
-              .catch(error => {
-                  console.error(error);
-                  loading = document.getElementById("loading");
-                  loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
-                  alert("Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!");
-              });
-        })
-        .catch(error => {
-          loading = document.getElementById("loading");
-          x.value = "Error: Request to server failed. Please try uploading the pdf instead. Sorry for the inconvenience!";
-          uploadBtn.innerHTML = "Error: You might be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version.";
-          loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
-          console.error(error);
-        });
-      }
-    })
-    .catch(error => {
-      console.error(error);
-      x.value = "Error: The URL you pasted does not allow downloading. Please try uploading the pdf instead. Sorry for the inconvenience!";
-      loading.value = "Error: The URL you pasted does not allow downloading. Please try uploading the pdf instead. Sorry for the inconvenience!";
-    });
-});
+            }
+
+        } catch (error) {
+          console.log(error);
+          console.log("Embeddings could not be calculated");
+          loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
+          alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
+            
+        }
+      };
+    } catch (error) {
+      console.log(error);
+      x.value = "Error: Failed to download PDF.";
+    }
+  });
 
   input.addEventListener("change", async function() {
     // Check if openai_key is set in sessionStorage
-    if (sessionStorage.getItem("openai_key") === null) {
+    const openaiKey = sessionStorage.getItem("openai_key");
+    if (!openaiKey) {
       // If not, prompt the user to enter their OpenAI API key
-        input = prompt("Please enter your OpenAI API key first. Don't worry, it will be saved only in your browser's local storage.");
-        sessionStorage.setItem("openai_key", input);
-        return;
+      const inputKey = prompt("Please enter your OpenAI API key first. Don't worry, it will be saved only in your browser's local storage.");
+      sessionStorage.setItem("openai_key", inputKey);
+      return;
     }
+
     const file = this.files[0];
     const fileArrayBuffer = await file.arrayBuffer();
-    // console.log(fileArrayBuffer);
 
-    document.querySelector("input[name='chat']").value = "Please wait while the PDF is being loaded...";
-    // make  document.querySelector("input[name='chat']") read-only
-    document.querySelector("input[name='chat']").readOnly = true;
+    const chatInput = document.querySelector("input[name='chat']");
+    chatInput.value = "Please wait while the PDF is being loaded...";
+    chatInput.readOnly = true;
 
-    var loading = document.createElement("p");
+    const loading = document.createElement("p");
     loading.id = "loading";
     loading.style.color = "lightgray";
     loading.style.fontSize = "14px";
     loading.innerHTML = "Calculating embeddings...";
     chat.appendChild(loading);
-
-    // Make a post request to /process_pdf with the file
-    fetch('/process_pdf', {
-        method: 'POST',
-        body: fileArrayBuffer,
-        headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Length': fileArrayBuffer.byteLength,
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-      window.key = data.key;
-      sessionStorage.setItem("pdf-key", data.key);
-      if (data.exists === true) {
-        console.log("Embeddings already exist");
-        document.querySelector("input[name='chat']").readOnly = false;
-        document.querySelector("input[name='chat']").value = "";
-        loading.innerHTML = "";
-        return;
-      }
-      e = embeddings(data.df)
-      .then(e => {
-        // console.log(e);
-        // Make a post request to /save with the key and embeddings
-        fetch('/save', {
-          method: 'POST',
-          body: JSON.stringify({'key': window.key, 'df': e}),
-          headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-          }
-          })
-          .then(response => response.json())
-          .then(data => {
-            // window.key = data.key;
-            // sessionStorage.setItem("pdf-key", data.key);
-            loading = document.getElementById("loading");
-            chat.removeChild(loading);
-            console.log(data);
-            document.querySelector("input[name='chat']").readOnly = false;
-            document.querySelector("input[name='chat']").value = "";
-          })
-          .catch(error => {
-            loading = document.getElementById("loading");
-            loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
-            console.error(error);
-      });
-    });
-    })
-    .catch(error => {
-      loading = document.getElementById("loading");
-      uploadBtn.innerHTML = "Error: Request to server failed. You may be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version. Sorry for the inconvenience!";
-      loading.innerHTML = "Error: Request to server failed. Your pdf might not be compatible. Try entering a link to a version hosted online. Make sure it ends with .pdf. Sorry for the inconvenience!";
-      console.error(error);
-    });
 
     pdfjsLib.getDocument(fileArrayBuffer).promise.then(pdfDoc => {
       viewer.src = URL.createObjectURL(file);
@@ -517,10 +467,71 @@ document.addEventListener("DOMContentLoaded", function() {
       up.style.display = "none";
       container.style.display = "flex";
       viewer.style.display = "block";
-      }).catch(error => {
-      console.error(error);
+    }).catch(error => {
+      console.log(error);
     });
 
-  });
+    // Make a post request to /process_pdf with the file
+    try {
+      const response = await fetch('/process_pdf', {
+        method: 'POST',
+        body: fileArrayBuffer,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': fileArrayBuffer.byteLength,
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+      const data = await response.json();
+
+      window.key = data.key;
+      sessionStorage.setItem("pdf-key", data.key);
+      if (data.exists === true) {
+        console.log("Embeddings already exist");
+        chatInput.readOnly = false;
+        chatInput.value = "";
+        loading.innerHTML = "";
+        return;
+      }
+
+      console.log("DUCK");
+      const e = await embeddings(data.df);
+      console.log(e);
+
+      // if e is null or there is an error, return
+      if (e === "error") {
+        loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+        alert("Error: Request to server failed. Please make sure your API key is correct. Close this tab and try again. Sorry for the inconvenience!");
+        return;
+      }
+      // Make a post request to /save with the key and embeddings
+      const saveResponse = await fetch('/save', {
+        method: 'POST',
+        body: JSON.stringify({'key': window.key, 'df': e}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+      const saveData = await saveResponse.json();
+      chat.removeChild(loading);
+      console.log(saveData);
+      chatInput.readOnly = false;
+      chatInput.value = "";
+    } catch (error) {
+      if (error.name === "TypeError") {
+        uploadBtn.innerHTML = "Error: Request to server failed. You may be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version. Sorry for the inconvenience!";
+        loading.innerHTML = "Error: Request to server failed. Your pdf might not be compatible. Try entering a link to a version hosted online. Make sure it ends with .pdf. Sorry for the inconvenience!";
+      } else {
+        loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
+      }
+      console.log(error);
+    }
+
+    });
 
 });
