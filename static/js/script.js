@@ -434,7 +434,8 @@ document.addEventListener("DOMContentLoaded", function() {
       };
     } catch (error) {
       console.log(error);
-      x.value = "Error: Failed to download PDF.";
+      x.value = "Error: Failed to download PDF. Try uploading a local copy instead.";
+      uploadBtn.innerHTML = "Error: Request to server failed. You may be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version. Sorry for the inconvenience!";
     }
   });
 
@@ -527,15 +528,10 @@ document.addEventListener("DOMContentLoaded", function() {
       chatInput.readOnly = false;
       chatInput.value = "";
     } catch (error) {
-      if (error.name === "TypeError") {
         uploadBtn.innerHTML = "Error: Request to server failed. You may be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version. Sorry for the inconvenience!";
         loading.innerHTML = "Error: Request to server failed. Your pdf might not be compatible. Try entering a link to a version hosted online. Make sure it ends with .pdf. Sorry for the inconvenience!";
-      } else {
-        loading.innerHTML = "Error: Request to server failed. Please refresh try uploading a copy of the pdf instead. Sorry for the inconvenience!";
-      }
-      console.log(error);
+        alert("You may be on a non-secure connection and missing https:// at the beginning. Please <a href=' https://researchgpt.ue.r.appspot.com'>click here</a> to go to the secure version. Sorry for the inconvenience!");
+        console.log(error);
     }
-
-    });
-
+  });
 });
