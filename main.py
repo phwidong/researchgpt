@@ -72,15 +72,16 @@ class Chatbot():
     def create_df(self, pdf):
         print('Creating dataframe')
         filtered_pdf= []
-        # print(pdf.pages[0].extract_text())
+
         for row in pdf:
             if len(row['text']) < 30:
                 continue
             filtered_pdf.append(row)
         df = pd.DataFrame(filtered_pdf)
+
         # remove elements with identical df[text] and df[page] values
         df = df.drop_duplicates(subset=['text', 'page'], keep='first')
-        # df['length'] = df['text'].apply(lambda x: len(x))
+
         print('Done creating dataframe')
         return df
 
@@ -117,7 +118,7 @@ def get_df():
 
     print('Done getting dataframe')
     json_str = df.to_json(orient='records')
-    # print(len(json_str))
+
     return {"df": json_str}
 
 # re-writing process_pdf to to just create the dataframe and send it to the frontend
@@ -125,16 +126,11 @@ def get_df():
 def process_pdf():
     print("Processing pdf")
     print(request)
-    # print('the data')
-    # print(request.data)
+
     file = request.data
 
     key = md5(file).hexdigest()
     print(key)
-
-    # if db.get(key) is not None:
-    #     print("File already exists")
-    #     return {"key": key, "exists": True}
 
     # Create a Cloud Storage client.
     gcs = storage.Client()
@@ -162,9 +158,7 @@ def process_pdf():
 @app.route("/save", methods=['POST'])
 def save():
     print("Saving df to gcs")
-    # print(request.json)
-    # print(request.json['df'])
-    # print(request.json['key'])
+
     df = request.json['df']
     key = request.json['key']
 
@@ -189,12 +183,6 @@ def save():
     # Create a new blob and upload the file's content.
     blob = bucket.blob(name)
     blob.upload_from_string(df.to_json(), content_type='application/json')
-
-    # if db.get(key) is None:
-    #     db.set(key, df.to_json())
-    # else:
-    #     print("File already exists")
-    #     return {"key": key, "exists": True}
     
     print("Saved pdf")
     return {"key": key, "exists": False}
@@ -210,19 +198,9 @@ def download_pdf():
 
     print(url)
 
-    # r = requests.get(str(url), allow_redirects=True, headers={
-    #     "Origin": "appspot.com", 
-    #     'Access-Control-Allow-Origin': '*',
-    #     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    #     'Access-Control-Allow-Headers': 'Content-Type, Authorization'})    
-
     print("Downloading pdf")
     key = md5(data).hexdigest()
     print(key)
-
-    # if db.get(key) is not None:
-    #     print("File already exists")
-    #     return {"key": key, "exists": True}
 
     # Create a Cloud Storage client.
     gcs = storage.Client()
@@ -241,7 +219,7 @@ def download_pdf():
     df = chatbot.create_df(paper_text)
 
     json_str = df.to_json(orient='records')
-    # print(len(json_str))
+
     print("Done processing pdf")
     return {"key": key, "df": json_str}
 
