@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, send_file
+from flask import Flask, request, render_template, jsonify, Response
 from pdf2image import convert_from_path
 from PIL import Image
 import base64
@@ -182,10 +182,45 @@ def get_pdfs():
 def display():
     data = request.get_json()
     pdf_path = data.get('path')
+    file = open(pdf_path, 'rb')
+
+    chatbot = Chatbot()
+
+    # Load the PDF using PyPDF2
+    pdf = PdfReader(BytesIO(file.read()))
+
+    key = md5(pdf_path.encode()).hexdigest()
+
+    # Check if the PDF has already been processed
+    if db.get(key) is not None:
+        # Load the processed data from the database
+        df = pd.read_json(BytesIO(db.get(key)))
+    else:
+        # Process the PDF
+        print("Processing PDF")
+        paper_text = chatbot.parse_paper(pdf)
+        df = chatbot.paper_df(paper_text)
+        df = chatbot.calculate_embeddings(df)
+
+        print("Done Processing PDF")
+
+        if db.get(key) is None:
+            db.set(key, df.to_json())
 
     # Ensure the file exists and is a PDF
     if os.path.isfile(pdf_path) and pdf_path.lower().endswith('.pdf'):
-        return send_file(pdf_path, mimetype='application/pdf')
+        # Seek back to the beginning of the file
+        file.seek(0)
+
+        # Read the PDF file data as bytes
+        pdf_data = file.read()
+
+        # Create a custom response with the PDF data and key
+        response = Response(pdf_data, content_type='application/pdf')
+        response.headers['Content-Disposition'] = 'attachment; filename={}'.format(os.path.basename(pdf_path))
+        response.headers['X-PDF-Key'] = key
+
+        return response
     else:
         return 'File not found or not a PDF', 404
 

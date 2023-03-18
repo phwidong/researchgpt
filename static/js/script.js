@@ -12,7 +12,6 @@ const form = document.querySelector("form");
 const p = document.querySelector("p");
 const up = document.querySelector("#up");
 const y = document.querySelector("#url");
-const send = document.querySelector("#send");
 
 document.getElementById('enter-btn').addEventListener('click', async function() {
   document.querySelector('.overlay').style.display = 'none';
@@ -59,80 +58,6 @@ document.getElementById('enter-btn').addEventListener('click', async function() 
 
     pdfGrid.appendChild(pdfItem);
   });
-});
-
-
-send.addEventListener("click", function(event) {
-  event.preventDefault();
-  const message = document.querySelector("input[name='chat']").value;
-  // if the message is empty, do nothing
-  if (message === "") {
-    return;
-  }
-  const chat = document.querySelector("#chat");
-  const query = document.createElement("p");
-  query.innerHTML = message;
-  chat.appendChild(query);
-  
-  const loading = document.createElement("p");
-  loading.style.color = "lightgray";
-  loading.style.fontSize = "14px";
-  loading.innerHTML = "Loading...";
-  chat.appendChild(loading);
-
-  // call the endpoint /reply with the message and get the reply.
-  fetch('/reply', {
-      method: 'POST',
-      body: JSON.stringify({'query': message, 'key': window.key}),
-      headers: {
-          'Content-Type': 'application/json'
-      }
-  })
-  .then(response => response.json())
-  // Append the reply to #chat as a simple paragraph without any styling
-  .then(data => {
-      console.log(data.answer);
-      chat.removeChild(loading);
-
-      const reply = document.createElement("p");
-      reply.style.color = "lightgray";
-      reply.style.marginBottom = "0px";
-      reply.style.paddingTop = "0px";
-      reply.innerHTML = data.answer;
-      chat.appendChild(reply);
-      chat.scrollTop = chat.scrollHeight;
-
-      const sources = data.sources;
-      console.log(sources)
-      // console.log(typeof JSON.parse(sources))
-      sources.forEach(function(source) {
-        for (var page in source) {
-          var p = document.createElement("p");
-          p.style.color = "gray";
-          p.style.fontSize = "12px";
-          p.style.fontWeight = "bold";
-          p.style.marginTop = "0px";
-          p.style.marginBottom = "0px";
-          p.style.paddingTop = "0px";
-          p.style.paddingBottom = "5px";
-          p.innerHTML = page + ": " + "'"+source[page];+"'"
-          chat.appendChild(p);
-        }
-      });
-    })
-    .catch(error => {
-      chat.removeChild(loading);
-      console.error(error);
-    
-      const errorMessage = document.createElement("p");
-      errorMessage.style.color = "red";
-      errorMessage.style.marginBottom = "0px";
-      errorMessage.style.paddingTop = "0px";
-      errorMessage.innerHTML = "Error: Request to OpenAI failed. Please try again.";
-      chat.appendChild(errorMessage);
-      chat.scrollTop = chat.scrollHeight;
-    });
-  document.querySelector("input[name='chat']").value = "";
 });
 
 // x.addEventListener("focus", function() {
