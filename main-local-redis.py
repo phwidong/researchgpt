@@ -1,4 +1,7 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify, send_file
+from pdf2image import convert_from_path
+from PIL import Image
+import base64
 from io import BytesIO
 from PyPDF2 import PdfReader
 import pandas as pd
@@ -145,6 +148,46 @@ class Chatbot():
 @app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
+
+@app.route('/viewer')
+def viewer():
+    return render_template('viewer.html')
+
+@app.route('/get_pdfs', methods=['GET'])
+def get_pdfs():
+    pdf_directory = '/Users/mukul/Downloads/papers'  # Set this to the path of your PDF directory
+    pdf_list = []
+
+    for file in os.listdir(pdf_directory):
+        if file.lower().endswith('.pdf'):
+            pdf_path = os.path.join(pdf_directory, file)
+            title = os.path.splitext(file)[0]
+            images = convert_from_path(pdf_path, size=(100, None), dpi=50, fmt='png', poppler_path="/opt/homebrew/opt/poppler/bin")  # Replace "path/to/poppler" with the path to your Poppler installation
+            first_page_image = images[0]
+
+            # Convert the image to base64
+            buffered = BytesIO()
+            first_page_image.save(buffered, format="PNG")
+            img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            
+            pdf_list.append({
+                'title': title,
+                'preview_image': img_base64,
+                'path': pdf_path,
+            })
+
+    return jsonify(pdf_list)
+
+@app.route('/display', methods=['POST'])
+def display():
+    data = request.get_json()
+    pdf_path = data.get('path')
+
+    # Ensure the file exists and is a PDF
+    if os.path.isfile(pdf_path) and pdf_path.lower().endswith('.pdf'):
+        return send_file(pdf_path, mimetype='application/pdf')
+    else:
+        return 'File not found or not a PDF', 404
 
 @app.route("/process_pdf", methods=['POST'])
 def process_pdf():
