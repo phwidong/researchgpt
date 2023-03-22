@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="static/js/script.js"></script>
+    <!-- <script src="static/js/script.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/build/pdf.min.js"></script>
     <link rel="stylesheet" href="static/css/styles.css">
   </head>
@@ -100,6 +100,28 @@
             reply.innerHTML = data.answer;
             chat.appendChild(reply);
             chat.scrollTop = chat.scrollHeight;
+
+            const like = document.createElement("img");
+            like.src = "static/like.png";
+            like.alt = "like";
+            like.style.width = "10px";
+            like.style.height = "10px";
+
+            const dislike = document.createElement("img");
+            dislike.src = "static/dislike.png";
+            dislike.alt = "dislike";
+            dislike.style.width = "10px";
+            dislike.style.height = "10px";
+
+            const icons = document.createElement("div");
+            // Position this div just below the paragraph above it
+            icons.style.position = "absolute";
+            // icons.style.bottom = "0px";
+            icons.style.right = "0px";
+            icons.appendChild(like);
+            icons.appendChild(dislike);
+
+            chat.appendChild(icons);
 
             const sources = data.sources;
             console.log(sources)
