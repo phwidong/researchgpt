@@ -153,13 +153,17 @@ def index():
 def viewer():
     return render_template('viewer.html')
 
-@app.route('/title.png', methods=['GET'])
+@app.route('/plus.png', methods=['GET'])
 def title():
-    return send_file('title.png', mimetype='image/png')
+    return send_file('plus.png', mimetype='image/png')
 
 @app.route('/app.html', methods=['GET'])
 def grid():
     return render_template('grid.html')
+
+@app.route('/test.html', methods=['GET'])
+def test():
+    return render_template('test.html')
 
 @app.route('/get_pdfs', methods=['GET'])
 def get_pdfs():

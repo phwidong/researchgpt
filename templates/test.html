@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="static/js/script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/build/pdf.min.js"></script>
+    <link rel="stylesheet" href="static/css/styles.css">
+  </head>
+  <script>
+    function toggleSidebar() {
+        const sidebar = document.querySelector(".sidebar");
+        sidebar.classList.toggle("active");
+  }
+  </script>
+  <body>
+    <nav class="navbar">  
+      <div class="toggle-icon" onclick="toggleSidebar(event)">
+        <span style="color: white;">&#9776;</span>
+      </div>
+      <div style="display: flex; flex-direction: row; justify-content: right; align-items: center;">
+        <a href="https://chrome.google.com/webstore/detail/your-extension-id" target="_blank">Try Chrome Extension</a>
+      <button id="enter-btn" class="enter-btn" onclick="location.href='app.html'" style="margin-right: 60px; margin-top: 10px;">Sign Up</button>
+      </div>
+    </nav>
+    <div class="sidebar">
+        <!-- Add your sidebar content here -->
+    </div>
+    <h2 style="font-size: 30px; align-self: center;">You don't have any documents. </h2>
+    <form id='url' style="margin-top: 320px; margin-bottom: 20px; width: 100%; text-align: center;">
+        <input type="text" name="pdf-url" placeholder="Enter URL" style="color: lightgray; padding: 10px; border: none; background-color: black; font: 1.2em Roboto; font-style: italic; width: 100%; text-align: center">
+    </form>
+
+    <p style="color: white; margin: 10px; /* padding: 10px; */ /* border-radius: 10px; */ /* background-color: grey; */ width: fit-content; /* max-width: 80%; */ text-align: start; overflow-wrap: break-word; /* font-style: normal; */ font-variant-caps: normal; /* font-weight: normal; */ /* font-stretch: normal; */ /* font-size: 1.2em; */ line-height: normal; font-family: Roboto;">or</p>
+
+    <button id="open-popup-btn" class="upload-btn">Upload</button>
+
+    <div id="popup-card" class="popup-card hidden">
+        <form id="up" enctype="multipart/form-data">
+            <label for="file-input" class="upload-btn">Upload a PDF</label>
+            <input type="file" accept=".pdf" id="file-input"/>
+        </form>
+        <a href="https://example.com/link1" class="option-link">Upload a Word Doc</a>
+        <a href="https://example.com/link2" class="option-link">Integrate Google Drive</a>
+        <a href="https://example.com/link3" class="option-link">Integrate Notion</a>
+        <a href="https://example.com/link4" class="option-link">Upload TXT</a>
+        <a href="https://example.com/link5" class="option-link">Upload a Powerpoint</a>
+        <a href="https://example.com/link6" class="option-link">Make some notes</a>
+    </div>
+  </body>
+</html>

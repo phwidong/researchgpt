@@ -123,6 +123,57 @@ h4 {
     margin-top: 40px;
 }
 
+#open-popup-btn {
+    color: white;
+    background-color: black;
+    border: 2px solid white;
+    border-radius: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    display: flex;
+    margin: 10px;
+    margin-top: 40px;
+    margin-left: 25px;
+}
+
+.popup-card {
+    position: fixed;
+    margin-left: 10px;
+    color: azure;
+    background-color: black;
+    border: 2px solid lightgrey;
+    border-radius: 10px;
+    padding: 20px;
+    align-items: center;
+    top: 60%; /* Updated to make the card appear a little lower */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;    
+    transform: translate(-50%, -50%) scale(1); /* Updated */
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; /* Updated */
+}
+
+.hidden {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8); /* Updated */
+    pointer-events: none;
+}
+
+.option-link, .upload-btn {
+    display: block;
+    margin: 10px 0;
+    color: white;
+    text-decoration: none;
+    font-size: 20px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 50;
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+
+
 input[type="file"] {
     display: none;
 }
@@ -169,7 +220,7 @@ input[type="text"] {
   .navbar {
     width: 100%;
     display: flex;
-    justify-content: right;
+    justify-content: space-between;
     align-items: flex-end;
     background-color: black;
     padding: 0.5rem 1rem;
@@ -186,5 +237,28 @@ input[type="text"] {
   
   .navbar a:hover {
     color: blue;
+  }
+
+  .toggle-icon {
+    cursor: pointer;
+    font-size: 40px;
+    margin: 10px;
+    margin-left: 20px;
+    margin-bottom: 15px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 240px;
+    height: 100%;
+    background-color: #333;
+    padding: 1rem;
+    transition: left 0.3s ease-in-out;
+  }
+
+  .sidebar.active {
+    left: 0;
   }
   

@@ -1,6 +1,40 @@
 document.addEventListener("DOMContentLoaded", function () {
   initializeUI();
 
+  const openPopupBtn = document.getElementById('open-popup-btn');
+  const popupCard = document.getElementById('popup-card');
+  const sidebar = document.getElementById('sidebar');
+  
+  openPopupBtn.addEventListener('click', () => {
+      popupCard.classList.toggle('hidden');
+  });
+  
+  document.addEventListener('mousedown', (event) => {
+      if (!popupCard.contains(event.target) && event.target !== openPopupBtn) {
+          popupCard.classList.add('hidden');
+      }
+  });
+
+  function toggleSidebar() {
+    const sidebar = document.querySelector(".sidebar");
+    sidebar.classList.toggle("active");
+  }
+  
+  function isInside(target, element) {
+    return element.contains(target) || target === element;
+  }
+  
+  document.addEventListener("click", function (event) {
+    const sidebar = document.querySelector(".sidebar");
+    const toggleIcon = document.querySelector(".toggle-icon");
+    const isClickInsideSidebar = isInside(event.target, sidebar);
+    const isClickInsideToggleIcon = isInside(event.target, toggleIcon);
+  
+    if (!isClickInsideSidebar && !isClickInsideToggleIcon && sidebar.classList.contains("active")) {
+      toggleSidebar();
+    }
+  });
+
   var TxtRotate = createTxtRotateClass();
   initializeTxtRotate(TxtRotate);
 

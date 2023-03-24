@@ -2,6 +2,26 @@
 
 document.addEventListener("DOMContentLoaded", function () {
     initializeUI();
+
+    function toggleSidebar() {
+      const sidebar = document.querySelector(".sidebar");
+      sidebar.classList.toggle("active");
+    }
+    
+    function isInside(target, element) {
+      return element.contains(target) || target === element;
+    }
+    
+    document.addEventListener("click", function (event) {
+      const sidebar = document.querySelector(".sidebar");
+      const toggleIcon = document.querySelector(".toggle-icon");
+      const isClickInsideSidebar = isInside(event.target, sidebar);
+      const isClickInsideToggleIcon = isInside(event.target, toggleIcon);
+    
+      if (!isClickInsideSidebar && !isClickInsideToggleIcon && sidebar.classList.contains("active")) {
+        toggleSidebar();
+      }
+    });
   
     var TxtRotate = createTxtRotateClass();
     initializeTxtRotate(TxtRotate);
