@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, Response
+from flask import Flask, request, render_template, jsonify, Response, send_file
 from pdf2image import convert_from_path
 from PIL import Image
 import base64
@@ -152,6 +152,14 @@ def index():
 @app.route('/viewer')
 def viewer():
     return render_template('viewer.html')
+
+@app.route('/title.png', methods=['GET'])
+def title():
+    return send_file('title.png', mimetype='image/png')
+
+@app.route('/app.html', methods=['GET'])
+def grid():
+    return render_template('grid.html')
 
 @app.route('/get_pdfs', methods=['GET'])
 def get_pdfs():

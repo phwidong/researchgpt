@@ -1,41 +1,26 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="static/js/script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/build/pdf.min.js"></script>
-    <link rel="stylesheet" href="static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
   </head>
+  <script src="/static/js/index.js"></script>
   <body>
+    <nav class="navbar">
+      <a href="https://chrome.google.com/webstore/detail/your-extension-id" target="_blank">Try Chrome Extension</a>
+      <button id="enter-btn" class="enter-btn" onclick="location.href='app.html'" style="margin-right: 60px; margin-top: 10px;">Sign Up</button>
+    </nav>
     <div class="overlay">
-      <h1 class="title">DARA</h1>
+      <h1 class="title">[DaRa]</h1>
       <h2 class="subtitle">Document Aided Research Assistant</h2>
+      <h4> A powerful AI copilot for all deep knowledge work </h4>
       <h3> Have a conversation with <span
         class="txt-rotate"
         data-period="200"
-        data-rotate='[ "a research paper.", "the code documentation.", "your notes.", " a book.", "your whole library.", "anything."]'> </span> </h3>
-      <!-- <button id="enter-btn" class="enter-btn" style="margin-top: 420px;">Sign Up</button> -->
-      <button id="enter-btn" class="enter-btn">Log In</button>
-    </div>
-    <div id="pdf-grid-container" style="display: none;">
-      <div class="title-container" style="text-align: center; width: 100%;">
-        <h1 style="font-size: 60px; margin-top: 20px; margin-left: 0; font-weight: 100;">Your Documents</h1>
+        data-rotate='[ "a research paper.", "code documentation.", "your notes.", " a book.", "your whole library.", "anything."]'> </span> </h3>
+      <div class="btn-container">
+        <button id="enter-btn" class="enter-btn" onclick="location.href='app.html'">Try a free demo</button>
+        <button id="enter-btn" class="enter-btn" onclick="location.href='app.html'">Join the waitlist</button>
       </div>
-      <div id="pdf-grid-wrapper" style="overflow-y: auto; max-height: calc(100vh - 150px); padding: 20px;">
-        <div id="pdf-grid" style="display: flex; flex-wrap: wrap;"></div>
-      </div>      
     </div>
-    <!-- <div id="container">
-        <iframe id="pdf-viewer" class="pdf-viewer" style="border-width: 0"></iframe> 
-        <div style="width: 40%; height: 100vh; border: none; background-color: black; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
-            <div id="chat" style="height: 100%; overflow-y: scroll; background-color: black;">
-            </div>
-            <form style="display: flex; padding-left: 10px; margin-bottom: 10px; width: 100%;">
-              <input type="text" name='chat' style="font-size: 14px; flex-grow: 2; padding: 10px; border: none; background-color: black; color: white;" placeholder="Ask a question..." />
-              <button id="send" style="background-color: transparent; border: none; padding: 10px 20px;">
-                <img src="static/send-icon.png" style="width: 20px; height: 20px;" />
-              </button>
-            </form>
-        </div>          
-    </div> -->
   </body>
 </html>

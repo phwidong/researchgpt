@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="/static/js/grid.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/build/pdf.min.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+  </head>
+  <body>
+    <div id="pdf-grid-container">
+      <div class="title-container" style="text-align: center; width: 100%;">
+        <h1 style="font-size: 60px; margin-top: 20px; margin-left: 0; font-weight: 100;">Your Documents</h1>
+      </div>
+      <div id="pdf-grid-wrapper" style="overflow-y: auto; max-height: calc(100vh - 150px); padding: 20px;">
+        <div id="pdf-grid" style="display: flex; flex-wrap: wrap;"></div>
+      </div>      
+    </div>
+  </body>
+</html>

@@ -1,149 +1,162 @@
-document.addEventListener("DOMContentLoaded", function() {
-  // This file contains the JavaScript code for the web app
+document.addEventListener("DOMContentLoaded", function () {
+  initializeUI();
 
-const input = document.querySelector("input[type='file']");
-var uploadBtn = document.querySelector(".upload-btn");
-const viewer = document.querySelector("#pdf-viewer");
-// viewer.style.display = 'none'; // hide the viewer at first
-const container = document.querySelector("#container");
-// container.style.display = 'none';
-var x = document.querySelector("input[name='pdf-url']");
-const form = document.querySelector("form");
-const p = document.querySelector("p");
-const up = document.querySelector("#up");
-const y = document.querySelector("#url");
+  var TxtRotate = createTxtRotateClass();
+  initializeTxtRotate(TxtRotate);
 
-var TxtRotate = function(el, toRotate, period) {
-  this.toRotate = toRotate;
-  this.el = el;
-  this.loopNum = 0;
-  this.period = parseInt(period, 10) || 1000;
-  this.txt = '';
-  this.tick();
-  this.isDeleting = false;
-};
+  handleParagraphEllipsis();
 
-TxtRotate.prototype.tick = function() {
-  var i = this.loopNum % this.toRotate.length;
-  var fullTxt = this.toRotate[i];
+  fillGrid();
 
-  if (this.isDeleting) {
-    this.txt = fullTxt.substring(0, this.txt.length - 1);
-  } else {
-    this.txt = fullTxt.substring(0, this.txt.length + 1);
-  }
+  handleSubmitEvent();
 
-  this.el.innerHTML = '<span class="wrap">'+this.txt+'</span>';
+  handleFileInputChange();
+});
 
-  var that = this;
-  var delta = 300 - Math.random() * 100;
+function initializeUI() {
+  const input = document.querySelector("input[type='file']");
+  var uploadBtn = document.querySelector(".upload-btn");
+  const viewer = document.querySelector("#pdf-viewer");
+  const container = document.querySelector("#container");
+  var x = document.querySelector("input[name='pdf-url']");
+  const form = document.querySelector("form");
+  const p = document.querySelector("p");
+  const up = document.querySelector("#up");
+  const y = document.querySelector("#url");
+}
 
-  if (this.isDeleting) { delta /= 2; }
-
-  if (!this.isDeleting && this.txt === fullTxt) {
-    delta = this.period;
-    this.isDeleting = true;
-  } else if (this.isDeleting && this.txt === '') {
+function createTxtRotateClass() {
+  return function (el, toRotate, period) {
+    this.toRotate = toRotate;
+    this.el = el;
+    this.loopNum = 0;
+    this.period = parseInt(period, 10) || 1000;
+    this.txt = '';
+    this.tick();
     this.isDeleting = false;
-    this.loopNum++;
-    delta = 500;
-  }
+  };
+}
 
-  setTimeout(function() {
-    that.tick();
-  }, delta);
-};
+function initializeTxtRotate(TxtRotate) {
+  TxtRotate.prototype.tick = function () {
+    var i = this.loopNum % this.toRotate.length;
+    var fullTxt = this.toRotate[i];
+  
+    if (this.isDeleting) {
+      this.txt = fullTxt.substring(0, this.txt.length - 1);
+    } else {
+      this.txt = fullTxt.substring(0, this.txt.length + 1);
+    }
+  
+    this.el.innerHTML = '<span class="wrap">'+this.txt+'</span>';
+  
+    var that = this;
+    var delta = 300 - Math.random() * 100;
+  
+    if (this.isDeleting) { delta /= 2; }
+  
+    if (!this.isDeleting && this.txt === fullTxt) {
+      delta = this.period;
+      this.isDeleting = true;
+    } else if (this.isDeleting && this.txt === '') {
+      this.isDeleting = false;
+      this.loopNum++;
+      delta = 500;
+    }
+  
+    setTimeout(function() {
+      that.tick();
+    }, delta);
+  };
 
-var elements = document.getElementsByClassName('txt-rotate');
-  for (var i=0; i<elements.length; i++) {
+  var elements = document.getElementsByClassName('txt-rotate');
+  for (var i = 0; i < elements.length; i++) {
     var toRotate = elements[i].getAttribute('data-rotate');
     var period = elements[i].getAttribute('data-period');
     if (toRotate) {
       new TxtRotate(elements[i], JSON.parse(toRotate), period);
     }
   }
-  // INJECT CSS
+
   var css = document.createElement("style");
   css.type = "text/css";
   css.innerHTML = ".txt-rotate > .wrap { border-right: 0.08em solid #666 }";
   document.body.appendChild(css);
+}
 
-var para = document.querySelectorAll(".ellipsis");
+function handleParagraphEllipsis() {
+  var para = document.querySelectorAll(".ellipsis");
 
-for (var i = 0; i < para.length; i++) {
+  for (var i = 0; i < para.length; i++) {
     var paraTxt = para[i].innerHTML;
 
     if (paraTxt.length > 200) {
+      var newPara = document.createElement("p"); //create new paragraph element
+      newPara.className = "ellipsis-trunc";
+      var newParaTxt = document.createTextNode(paraTxt.substring(0,200)+"...");
+      //create new text node
 
-        var newPara = document.createElement("p"); //create new paragraph element
-        newPara.className = "ellipsis-trunc";
-        var newParaTxt = document.createTextNode(paraTxt.substring(0,200)+"...");
-        //create new text node
-
-        newPara.appendChild(newParaTxt); //bind new text node to new element
-        para[i].replaceWith(newPara);
-
+      newPara.appendChild(newParaTxt); //bind new text node to new element
+      para[i].replaceWith(newPara);
     } else {
-        console.log("I've got nothing");
+      console.log("I've got nothing");
     }
-
   }
+}
 
-document.getElementById('enter-btn').addEventListener('click', async function() {
-  document.querySelector('.overlay').style.display = 'none';
-  document.getElementById('pdf-grid-container').style.display = 'flex';
-  document.getElementById('pdf-grid-container').style.flexWrap = 'wrap';
-  console.log('clicked');
+function fillGrid() {
+  document.getElementById('enter-btn').addEventListener('click', async function () {
 
-  const response = await fetch('/get_pdfs');
-  const data = await response.json();
+    document.querySelector('.overlay').style.display = 'none';
+    document.getElementById('pdf-grid-container').style.display = 'flex';
+    document.getElementById('pdf-grid-container').style.flexWrap = 'wrap';
+    console.log('clicked');
 
-  const pdfGrid = document.getElementById('pdf-grid');
-  pdfGrid.style.marginLeft = '50px';
-  pdfGrid.style.marginRight = '50px';
+    const response = await fetch('/get_pdfs');
+    const data = await response.json();
 
-  data.forEach(item => {
-    const pdfItem = document.createElement('div');
-    pdfItem.style.width = '150px';
-    pdfItem.style.margin = '20px';
-    pdfItem.style.textAlign = 'center';
+    const pdfGrid = document.getElementById('pdf-grid');
+    pdfGrid.style.marginLeft = '50px';
+    pdfGrid.style.marginRight = '50px';
 
-    const pdfIcon = document.createElement('img');
-    pdfIcon.src = 'data:image/png;base64,' + item.preview_image;
-    pdfIcon.style.width = '150px';
-    pdfIcon.style.height = '200px';
-    pdfIcon.style.objectFit = 'contain';
+    data.forEach(item => {
+      const pdfItem = document.createElement('div');
+      pdfItem.style.width = '150px';
+      pdfItem.style.margin = '20px';
+      pdfItem.style.textAlign = 'center';
 
-    // Inside the loop where you create the pdfItem
-    pdfIcon.addEventListener('click', async function () {
-      window.location.href = `/viewer?pdfPath=${encodeURIComponent(item.path)}`;
+      const pdfIcon = document.createElement('img');
+      pdfIcon.src = 'data:image/png;base64,' + item.preview_image;
+      pdfIcon.style.width = '150px';
+      pdfIcon.style.height = '200px';
+      pdfIcon.style.objectFit = 'contain';
+
+      // Inside the loop where you create the pdfItem
+      pdfIcon.addEventListener('click', async function () {
+        window.location.href = `/viewer?pdfPath=${encodeURIComponent(item.path)}`;
+      });
+
+      const pdfTitle = document.createElement('p');
+      pdfTitle.textContent = item.title;
+      // cut off the title if it is too long
+      if (pdfTitle.textContent.length > 20) {
+        pdfTitle.textContent = pdfTitle.textContent.substring(0, 20) + '...';
+      }
+      pdfTitle.style.marginTop = '10px';
+      // change the color of the title to white
+      pdfTitle.style.color = 'white';
+
+      pdfItem.appendChild(pdfIcon);
+      pdfItem.appendChild(pdfTitle);
+
+      pdfGrid.appendChild(pdfItem);
     });
 
-    const pdfTitle = document.createElement('p');
-    pdfTitle.textContent = item.title;
-    // cut off the title if it is too long
-    if (pdfTitle.textContent.length > 20) {
-      pdfTitle.textContent = pdfTitle.textContent.substring(0, 20) + '...';
-    }
-    pdfTitle.style.marginTop = '10px';
-    // change the color of the title to white
-    pdfTitle.style.color = 'white';
-
-    pdfItem.appendChild(pdfIcon);
-    pdfItem.appendChild(pdfTitle);
-
-    pdfGrid.appendChild(pdfItem);
   });
-});
+}
 
-// x.addEventListener("focus", function() {
-//     if (this.value === "Enter URL") {
-//     this.value = "";
-//     this.style.color = "black";
-//     }
-// });
-
-y.addEventListener("submit", function(event) {
+function handleSubmitEvent() {
+  y.addEventListener("submit", function (event) {
     event.preventDefault();
     const url = this.elements["pdf-url"].value;
     if (url === "") {
@@ -203,53 +216,55 @@ y.addEventListener("submit", function(event) {
         x.innerHTML = "Error: Request to server failed. Please try again. Check the URL if there is https:// at the beginning. If not, add it.";
         console.error(error);
       });
-});
+  });
+}
 
-input.addEventListener("change", async function() {
-  const file = this.files[0];
-  const fileArrayBuffer = await file.arrayBuffer();
-  console.log(fileArrayBuffer);
-
-  var loading = document.createElement("p");
-  loading.style.color = "lightgray";
-  loading.style.fontSize = "14px";
-  loading.innerHTML = "Calculating embeddings...";
-  chat.appendChild(loading);
-
-  // Make a post request to /process_pdf with the file
-  fetch('/process_pdf', {
-      method: 'POST',
-      body: fileArrayBuffer,
-      headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Length': fileArrayBuffer.byteLength,
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }
-  })
-  .then(response => response.json())
-  // Append the reply to #chat as a simple paragraph without any styling
-  .then(data => {
-    chat.removeChild(loading);
-    window.key = data.key;
-  })
-  .catch(error => {
-    loading.innerHTML = "Error: Processing the pdf failed due to excess load. Please try again later.  Check the URL if there is https:// at the beginning. If not, add it.";
+function handleFileInputChange() {
+  input.addEventListener("change", async function () {
+    const file = this.files[0];
+    const fileArrayBuffer = await file.arrayBuffer();
+    console.log(fileArrayBuffer);
+  
+    var loading = document.createElement("p");
+    loading.style.color = "lightgray";
+    loading.style.fontSize = "14px";
+    loading.innerHTML = "Calculating embeddings...";
+    chat.appendChild(loading);
+  
+    // Make a post request to /process_pdf with the file
+    fetch('/process_pdf', {
+        method: 'POST',
+        body: fileArrayBuffer,
+        headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Length': fileArrayBuffer.byteLength,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+    })
+    .then(response => response.json())
+    // Append the reply to #chat as a simple paragraph without any styling
+    .then(data => {
+      chat.removeChild(loading);
+      window.key = data.key;
+    })
+    .catch(error => {
+      loading.innerHTML = "Error: Processing the pdf failed due to excess load. Please try again later.  Check the URL if there is https:// at the beginning. If not, add it.";
+      console.error(error);
+    });
+      
+    pdfjsLib.getDocument(fileArrayBuffer).promise.then(pdfDoc => {
+    viewer.src = URL.createObjectURL(file);
+    uploadBtn.style.display = "none";
+    form.style.display = "none";
+    form.style.marginTop = "0px";
+    p.style.display = "none";
+    up.style.display = "none";
+    container.style.display = "flex";
+    viewer.style.display = "block";
+    }).catch(error => {
     console.error(error);
+    });
   });
-    
-  pdfjsLib.getDocument(fileArrayBuffer).promise.then(pdfDoc => {
-  viewer.src = URL.createObjectURL(file);
-  uploadBtn.style.display = "none";
-  form.style.display = "none";
-  form.style.marginTop = "0px";
-  p.style.display = "none";
-  up.style.display = "none";
-  container.style.display = "flex";
-  viewer.style.display = "block";
-  }).catch(error => {
-  console.error(error);
-  });
-});
-});
+}

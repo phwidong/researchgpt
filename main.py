@@ -139,8 +139,29 @@ class Chatbot():
         print('Done creating prompt')
         return messages
 
-    def gpt(self, messages):
+    def gpt(self, prompt):
+
+        system_role = """whose expertise is reading and summarizing scientific papers. You are given a query, 
+        a series of text embeddings and the title from a paper in order of their cosine similarity to the query. 
+        You must take the given embeddings and return a very detailed summary of the paper in the languange of the query: 
+            
+        Here is the question: """+ prompt + """
+            
+        and here is the text: 
+            
+            str(${pageContent})
+
+        """
+
+        user_content = f"""Given the question: "{str(prompt)}". Return a detailed answer based on the paper:"""
+
+        messages = [
+        {"role": "system", "content": system_role},
+        {"role": "user", "content": user_content},]
+
+        print('Done creating prompt')
         print('Sending request to GPT-3')
+
         openai.api_key = os.getenv('OPENAI_API_KEY')
         r = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=0.7, max_tokens=1500)
         answer = r.choices[0]["message"]["content"]
