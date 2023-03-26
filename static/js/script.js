@@ -190,6 +190,7 @@ function fillGrid() {
 }
 
 function handleSubmitEvent() {
+  y = document.querySelector("#url");
   y.addEventListener("submit", function (event) {
     event.preventDefault();
     const url = this.elements["pdf-url"].value;
@@ -254,6 +255,8 @@ function handleSubmitEvent() {
 }
 
 function handleFileInputChange() {
+  const viewer = document.querySelector("#pdf-viewer");
+  const input = document.querySelector("#file-input");
   input.addEventListener("change", async function () {
     const file = this.files[0];
     const fileArrayBuffer = await file.arrayBuffer();

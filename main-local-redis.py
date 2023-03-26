@@ -243,6 +243,9 @@ def process_pdf():
     print(key)
     file = request.data
     pdf = PdfReader(BytesIO(file))
+    if db.get(key) is not None:
+        print("Already processed pdf")
+        return {"key": key}
     chatbot = Chatbot()
     paper_text = chatbot.parse_paper(pdf)
     df = chatbot.paper_df(paper_text)
@@ -260,6 +263,9 @@ def download_pdf():
     url = request.json['url']
     r = requests.get(str(url))
     key = md5(r.content).hexdigest()
+    if db.get(key) is not None:
+        print("Pdf already processed")
+        return {"key": key}
     pdf = PdfReader(BytesIO(r.content))
     paper_text = chatbot.parse_paper(pdf)
     df = chatbot.paper_df(paper_text)
