@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-  initializeUI();
 
   const openPopupBtn = document.getElementById('open-popup-btn');
   const popupCard = document.getElementById('popup-card');
@@ -40,24 +39,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
   handleParagraphEllipsis();
 
-  fillGrid();
-
   handleSubmitEvent();
 
   handleFileInputChange();
 });
-
-function initializeUI() {
-  const input = document.querySelector("input[type='file']");
-  var uploadBtn = document.querySelector(".upload-btn");
-  const viewer = document.querySelector("#pdf-viewer");
-  const container = document.querySelector("#container");
-  var x = document.querySelector("input[name='pdf-url']");
-  const form = document.querySelector("form");
-  const p = document.querySelector("p");
-  const up = document.querySelector("#up");
-  const y = document.querySelector("#url");
-}
 
 function createTxtRotateClass() {
   return function (el, toRotate, period) {
@@ -136,57 +121,6 @@ function handleParagraphEllipsis() {
       console.log("I've got nothing");
     }
   }
-}
-
-function fillGrid() {
-  document.getElementById('enter-btn').addEventListener('click', async function () {
-
-    document.querySelector('.overlay').style.display = 'none';
-    document.getElementById('pdf-grid-container').style.display = 'flex';
-    document.getElementById('pdf-grid-container').style.flexWrap = 'wrap';
-    console.log('clicked');
-
-    const response = await fetch('/get_pdfs');
-    const data = await response.json();
-
-    const pdfGrid = document.getElementById('pdf-grid');
-    pdfGrid.style.marginLeft = '50px';
-    pdfGrid.style.marginRight = '50px';
-
-    data.forEach(item => {
-      const pdfItem = document.createElement('div');
-      pdfItem.style.width = '150px';
-      pdfItem.style.margin = '20px';
-      pdfItem.style.textAlign = 'center';
-
-      const pdfIcon = document.createElement('img');
-      pdfIcon.src = 'data:image/png;base64,' + item.preview_image;
-      pdfIcon.style.width = '150px';
-      pdfIcon.style.height = '200px';
-      pdfIcon.style.objectFit = 'contain';
-
-      // Inside the loop where you create the pdfItem
-      pdfIcon.addEventListener('click', async function () {
-        window.location.href = `/viewer?pdfPath=${encodeURIComponent(item.path)}`;
-      });
-
-      const pdfTitle = document.createElement('p');
-      pdfTitle.textContent = item.title;
-      // cut off the title if it is too long
-      if (pdfTitle.textContent.length > 20) {
-        pdfTitle.textContent = pdfTitle.textContent.substring(0, 20) + '...';
-      }
-      pdfTitle.style.marginTop = '10px';
-      // change the color of the title to white
-      pdfTitle.style.color = 'white';
-
-      pdfItem.appendChild(pdfIcon);
-      pdfItem.appendChild(pdfTitle);
-
-      pdfGrid.appendChild(pdfItem);
-    });
-
-  });
 }
 
 function handleSubmitEvent() {
