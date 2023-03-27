@@ -1,164 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <!-- <script src="static/js/script.js"></script> -->
+    <script src="static/js/viewer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.0.1/build/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.3.122/build/pdf.min.js"></script>
     <link rel="stylesheet" href="static/css/styles.css">
   </head>
-  <script>
-    document.addEventListener("DOMContentLoaded", async function() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const pdfPath = urlParams.get("pdfPath");
-      const input = document.querySelector("input[type='file']");
-      const viewer = document.querySelector("#pdf-viewer");
-      // viewer.style.display = 'none'; // hide the viewer at first
-      const container = document.querySelector("#container");
-      const p = document.querySelector("p");
-      const send = document.querySelector("#send");
-      const chat = document.querySelector("#chat");
-
-      var loading = document.createElement("p");
-      loading.style.color = "lightgray";
-      loading.style.fontSize = "14px";
-      loading.innerHTML = "Calculating embeddings...";
-      chat.appendChild(loading);
-      container.style.display = "flex";
-
-      try {
-        const response = await fetch('/display', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ path: pdfPath }),
-        })
-
-        const pdfKey = response.headers.get('X-PDF-Key');
-        window.key = pdfKey;
-
-        // If the response is not 200, throw an error
-        if (response.status !== 200) {
-          alert('There was an error. Please try again.');
-          throw new Error('Error: ' + response.status);
-        }
-
-        chat.removeChild(loading);
-
-        const pdfBlob = await response.blob();
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        pdfjsLib.getDocument(pdfUrl).promise.then((pdfDoc) => {
-          viewer.src = pdfUrl;
-          // uploadBtn.style.display = "none";
-          // form.style.display = "none";
-          // form.style.marginTop = "0px";
-          p.style.display = "none";
-          // up.style.display = "none";
-          viewer.style.display = "block";
-        }).catch((error) => {
-          console.error(error);
-        });
-      } catch (error) {
-        console.error(error);
-      }
-
-      send.addEventListener("click", function(event) {
-        event.preventDefault();
-        const message = document.querySelector("input[name='chat']").value;
-        // if the message is empty, do nothing
-        if (message === "") {
-          return;
-        }
-        const chat = document.querySelector("#chat");
-        const query = document.createElement("p");
-        query.innerHTML = message;
-        chat.appendChild(query);
-        
-        const loading = document.createElement("p");
-        loading.style.color = "lightgray";
-        loading.style.fontSize = "14px";
-        loading.innerHTML = "Loading...";
-        chat.appendChild(loading);
-
-        // call the endpoint /reply with the message and get the reply.
-        fetch('/reply', {
-            method: 'POST',
-            body: JSON.stringify({'query': message, 'key': window.key}),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        // Append the reply to #chat as a simple paragraph without any styling
-        .then(data => {
-            console.log(data.answer);
-            chat.removeChild(loading);
-
-            const reply = document.createElement("p");
-            reply.style.color = "lightgray";
-            reply.style.marginBottom = "0px";
-            reply.style.paddingTop = "0px";
-            reply.innerHTML = data.answer;
-            chat.appendChild(reply);
-            chat.scrollTop = chat.scrollHeight;
-
-            const like = document.createElement("img");
-            like.src = "static/like.png";
-            like.alt = "like";
-            like.style.width = "10px";
-            like.style.height = "10px";
-
-            const dislike = document.createElement("img");
-            dislike.src = "static/dislike.png";
-            dislike.alt = "dislike";
-            dislike.style.width = "10px";
-            dislike.style.height = "10px";
-
-            const icons = document.createElement("div");
-            // Position this div just below the paragraph above it
-            icons.style.position = "absolute";
-            // icons.style.bottom = "0px";
-            icons.style.right = "0px";
-            icons.appendChild(like);
-            icons.appendChild(dislike);
-
-            chat.appendChild(icons);
-
-            const sources = data.sources;
-            console.log(sources)
-            // console.log(typeof JSON.parse(sources))
-            sources.forEach(function(source) {
-              for (var page in source) {
-                var p = document.createElement("p");
-                p.style.color = "gray";
-                p.style.fontSize = "12px";
-                p.style.fontWeight = "bold";
-                p.style.marginTop = "0px";
-                p.style.marginBottom = "0px";
-                p.style.paddingTop = "0px";
-                p.style.paddingBottom = "5px";
-                p.innerHTML = page + ": " + "'"+source[page];+"'"
-                chat.appendChild(p);
-              }
-            });
-          })
-          .catch(error => {
-            chat.removeChild(loading);
-            console.error(error);
-          
-            const errorMessage = document.createElement("p");
-            errorMessage.style.color = "red";
-            errorMessage.style.marginBottom = "0px";
-            errorMessage.style.paddingTop = "0px";
-            errorMessage.innerHTML = "Error: Request to OpenAI failed. Please try again.";
-            chat.appendChild(errorMessage);
-            chat.scrollTop = chat.scrollHeight;
-          });
-        document.querySelector("input[name='chat']").value = "";
-    });
-
-
-    });
-  </script>
   <body>
     <div id="container">
         <iframe id="pdf-viewer" class="pdf-viewer" style="border-width: 0"></iframe> 
@@ -169,7 +16,7 @@
             <form style="display: flex; padding-left: 10px; margin-bottom: 10px; width: 100%;">
               <input type="text" name='chat' style="font-size: 14px; flex-grow: 2; padding: 10px; border: none; background-color: black; color: white;" placeholder="Ask a question..." />
               <button id="send" style="background-color: transparent; border: none; padding: 10px 20px;">
-                <img src="static/send-icon.png" style="width: 20px; height: 20px;" />
+                <img src="static/send-icon.png" style="width: 20px; height: 20px; cursor: pointer;" />
               </button>
             </form>
         </div>          

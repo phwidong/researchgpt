@@ -159,7 +159,7 @@ h4 {
     pointer-events: none;
 }
 
-.option-link, .upload-btn {
+ .upload-btn {
     display: block;
     margin: 10px 0;
     color: white;
@@ -172,7 +172,21 @@ h4 {
     margin-bottom: 20px;
 }
 
+.option-link {
+    color: gray;
+    text-decoration: none;
+    font-size: 20px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 50;
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 0px;
+    display: block;
+}
 
+.popup-card div {
+  text-align: center;
+}
 
 input[type="file"] {
     display: none;
@@ -180,6 +194,10 @@ input[type="file"] {
 
 form {
     margin: auto 0;
+}
+
+form label {
+  cursor: pointer;
 }
 
 input[type="text"] {
@@ -246,6 +264,12 @@ input[type="text"] {
     margin-left: 20px;
     margin-bottom: 15px;
   }
+
+  .coming-soon {
+    color: grey;
+    font-size: smaller;
+  }
+  
 
   .sidebar {
     position: fixed;

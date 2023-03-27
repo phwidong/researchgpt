@@ -1,6 +1,5 @@
-from flask import Flask, request, render_template, jsonify, Response, send_file
+from flask import Flask, request, render_template, jsonify, Response, send_file, make_response
 from pdf2image import convert_from_path
-from PIL import Image
 import base64
 from io import BytesIO
 from PyPDF2 import PdfReader
@@ -12,6 +11,7 @@ import requests
 from flask_cors import CORS
 import redis
 from _md5 import md5
+import uuid
 
 app = Flask(__name__)
 # db=redis.from_url(os.environ['REDISCLOUD_URL'])
@@ -19,7 +19,7 @@ db = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 CORS(app)
 
-
+ 
 class Chatbot():
     
     def parse_paper(self, pdf):
@@ -164,6 +164,39 @@ def grid():
 @app.route('/test.html', methods=['GET'])
 def test():
     return render_template('test.html')
+
+@app.route('/save_file', methods=['POST'])
+def save_file():
+    file = request.files['file']
+    file_id = str(uuid.uuid4())
+    print(file_id)
+    # Save file to redis as base64
+    file_data = base64.b64encode(file.read())
+    db.set(file_id, file_data)
+    return jsonify({"file_id": file_id})
+
+@app.route('/get_file/<file_id>', methods=['GET'])
+def get_file(file_id):
+    # Get file from redis as base64
+    print(file_id)
+    file_data_base64 = db.get(file_id)
+    file_data = base64.b64decode(file_data_base64)
+    print(type(file_data))
+
+    # Identify the file type based on the file extension
+    file_ext = file_data[0:4]
+    if file_ext == b'%PDF':
+        content_type = 'application/pdf'
+    elif file_ext == b'PK\x03\x04':
+        content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    else:
+        content_type = 'application/octet-stream'
+
+    response = make_response(file_data)
+    response.headers.set('Content-Type', content_type)
+    response.headers.set('Content-Disposition', f'attachment; filename={file_id}.docx')
+    return response
+
 
 @app.route('/get_pdfs', methods=['GET'])
 def get_pdfs():

@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
   handleSubmitEvent();
 
   handleFileInputChange();
+
 });
 
 function createTxtRotateClass() {
@@ -123,9 +124,10 @@ function handleParagraphEllipsis() {
   }
 }
 
-function handleSubmitEvent() {
+async function handleSubmitEvent() {
   y = document.querySelector("#url");
-  y.addEventListener("submit", function (event) {
+  var x = document.querySelector("input[name='pdf-url']");
+  y.addEventListener("submit", async function (event) {
     event.preventDefault();
     const url = this.elements["pdf-url"].value;
     if (url === "") {
@@ -133,109 +135,129 @@ function handleSubmitEvent() {
     }
     // if the url does not end with .pdf, make x.value = "Error: URL does not end with .pdf"
     if (!url.endsWith(".pdf")) {
-        x.value = "Error: URL does not end with .pdf";
+        url.value = "Error: URL does not end with .pdf";
         return;
     }
     x.value = "Loading...";
     console.log(url);
-    fetch(url)
-    .then(response => response.blob())
-    .then(pdfBlob => {
-        console.log(pdfBlob);
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        pdfjsLib.getDocument(pdfUrl).promise.then(pdfDoc => {
-            viewer.src = pdfUrl;
-            uploadBtn.style.display = "none";
-            form.style.display = "none";
-            form.style.marginTop = "0px";
-            p.style.display = "none";
-            up.style.display = "none";
-            container.style.display = "flex";
-            viewer.style.display = "block";
-        });
-        })
-        .catch(error => {
-            console.error(error);
-        });
-    var loading = document.createElement("p");
-    loading.style.color = "lightgray";
-    loading.style.fontSize = "14px";
-    loading.innerHTML = "Calculating embeddings...";
-    chat.appendChild(loading);
 
-    // Make a POST request to the server 'myserver/download-pdf' with the URL
-    fetch('/download_pdf', {
-      method: 'POST',
-      body: JSON.stringify({'url': url}),
-      headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }
-      })
-      .then(response => response.json())
-      // Append the reply to #chat as a simple paragraph without any styling
-      .then(data => {
-        chat.removeChild(loading);
-        window.key = data.key;
-      })
-      .catch(error => {
-        uploadBtn.innerHTML = "Error: Request to server failed. Please try again. Check the URL if there is https:// at the beginning. If not, add it.";
-        x.innerHTML = "Error: Request to server failed. Please try again. Check the URL if there is https:// at the beginning. If not, add it.";
-        console.error(error);
-      });
+    file = await fetch(url).then(r => r.blob());
+
+    // Convert the Blob to an ArrayBuffer
+    const buffer = await file.arrayBuffer();
+    
+    const file_id = await saveFile(buffer, file.type);
+    console.log(file_id);
+    if (file_id) {
+      window.location.href = `/viewer?file_id=${file_id}&type=${file.type}`;
+    }
   });
 }
 
-function handleFileInputChange() {
-  const viewer = document.querySelector("#pdf-viewer");
-  const input = document.querySelector("#file-input");
-  input.addEventListener("change", async function () {
+window.onload = function() {
+  // check if the user has already saved an API key
+  if (sessionStorage.getItem("openai_key") === null) {
+    var input = prompt("Please enter your Open AI api key. Don't worry, it will be saved only in your browser's local storage.");
+    // if the field is empty, show the prompt again
+    if (input === "") {
+      alert("You must enter an API key to use the chatbot.");
+      // show the prompt again
+      window.onload();
+      return;
+    }
+    // If the user clicks cancel, do nothing
+    if (input === null) {
+      return;
+    }
+    sessionStorage.setItem("openai_key", input);
+    alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
+  }
+  else {
+    console.log("API key already saved");
+    return;
+  }
+};
+
+async function getGPTModel() {
+  try {
+    const response = await fetch('https://api.openai.com/v1/models/gpt-4', {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + sessionStorage.getItem("openai_key"),
+        'Content-Type': 'application/json'
+        }
+      });
+  if (response.status === 200) {
+    console.log('GPT-4 model available');
+    return 'gpt-4';
+    } else {
+      return 'gpt-3.5-turbo';
+    }
+  } catch (error) {
+    console.error('Error fetching GPT model:', error);
+    return 'gpt-3.5-turbo';
+  }
+}
+
+async function saveFile(file, type) {
+
+  const model = await getGPTModel();
+
+  const response = await fetch("/save_file", {
+    method: "POST",
+    body: file,
+    headers: {
+      'Content-Type': type,
+      // 'Content-Length': fileArrayBuffer.byteLength,
+      'Model': model
+    }
+  });
+
+  const data = await response.json();
+  return data.key;
+}
+
+async function handleFileInputChange() {
+  const pdfInput = document.getElementById("pdf-input");
+  const docxInput = document.getElementById("docx-input");
+  const txtInput = document.getElementById("txt-input");
+
+  txtInput.addEventListener("change", async function () {
+    const file = this.files[0];
+    // Log the file name, size, and type
+    const fileArrayBuffer = await file.arrayBuffer();
+
+    // convert array buffer to string
+    const decoder = new TextDecoder("utf-8");
+    const fileString = decoder.decode(fileArrayBuffer);
+    console.log(fileString);
+
+    console.log(file.name, file.size, file.type);
+    const file_id = await saveFile(fileArrayBuffer, file.type);
+    console.log(file_id);
+    window.location.href = `/viewer?file_id=${file_id}&type=plain/text&str=${fileString}`;
+  });
+  
+  pdfInput.addEventListener("change", async function () {
     const file = this.files[0];
     const fileArrayBuffer = await file.arrayBuffer();
-    console.log(fileArrayBuffer);
+    console.log(file);
+    // Log the file name, size, and type
+    console.log(file.name, file.size, file.type);
+    const file_id = await saveFile(fileArrayBuffer, file.type);
+    console.log(file_id);
+    window.location.href = `/viewer?file_id=${file_id}&type=application/pdf`;
+  });
   
-    var loading = document.createElement("p");
-    loading.style.color = "lightgray";
-    loading.style.fontSize = "14px";
-    loading.innerHTML = "Calculating embeddings...";
-    chat.appendChild(loading);
-  
-    // Make a post request to /process_pdf with the file
-    fetch('/process_pdf', {
-        method: 'POST',
-        body: fileArrayBuffer,
-        headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Length': fileArrayBuffer.byteLength,
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }
-    })
-    .then(response => response.json())
-    // Append the reply to #chat as a simple paragraph without any styling
-    .then(data => {
-      chat.removeChild(loading);
-      window.key = data.key;
-    })
-    .catch(error => {
-      loading.innerHTML = "Error: Processing the pdf failed due to excess load. Please try again later.  Check the URL if there is https:// at the beginning. If not, add it.";
-      console.error(error);
-    });
-      
-    pdfjsLib.getDocument(fileArrayBuffer).promise.then(pdfDoc => {
-    viewer.src = URL.createObjectURL(file);
-    uploadBtn.style.display = "none";
-    form.style.display = "none";
-    form.style.marginTop = "0px";
-    p.style.display = "none";
-    up.style.display = "none";
-    container.style.display = "flex";
-    viewer.style.display = "block";
-    }).catch(error => {
-    console.error(error);
-    });
+  docxInput.addEventListener("change", async function () {
+    const file = this.files[0];
+    // Log the file name, size, and type
+    console.log(file.name, file.size, file.type);
+    const file_id = await saveFile(file, file.type);
+
+    console.log(file_id);
+    if (file_id) {
+      window.location.href = `/viewer?file_id=${file_id}&type=application/msword`;
+    }
   });
 }
