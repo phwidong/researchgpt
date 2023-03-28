@@ -6,7 +6,6 @@ from PyPDF2 import PdfReader
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
-import openai
 import os
 import requests
 from flask_cors import CORS
@@ -15,10 +14,10 @@ from google.cloud import storage
 import docx
 
 app = Flask(__name__)
-# db=redis.from_url(os.environ['REDISCLOUD_URL'])
-# db = redis.StrictRedis(host='localhost', port=6379, db=0)
+
 os.environ['CLOUD_STORAGE_BUCKET'] = 'researchgpt.appspot.com'
 CLOUD_STORAGE_BUCKET = 'mukuls-public-bucket'
+
 CORS(app)
 
 class Chatbot():
@@ -75,6 +74,15 @@ class Chatbot():
         # print(paper_text)
         return paper_text
     
+    # A function that parses through a string and returns a dataframe with the text and the page number. 
+    # Split the text into chunks of 2000 characters
+    def extract_df(self, text):
+        df = pd.DataFrame(columns=['text', 'page'])
+        page = 0
+        for i in range(0, len(text), 2000):
+            df = df.append({'text': text[i:i+2000], 'page': page}, ignore_index=True)
+            page += 1
+        return df
 
     # A function that parses through a pdf and returns a dataframe with the text and the page number
     def make_df(self, pdf):
@@ -114,89 +122,6 @@ class Chatbot():
         df['length'] = df['text'].apply(lambda x: len(x))
         print('Done creating dataframe')
         return df
-
-    def embeddings(self, df):
-        print('Calculating embeddings')
-        openai.api_key = os.getenv('OPENAI_API_KEY')
-        embedding_model = "text-embedding-ada-002"
-        embeddings = df.text.apply([lambda x: get_embedding(x, engine=embedding_model)])
-        df["embeddings"] = embeddings
-        print('Done calculating embeddings')
-        return df
-
-    def search(self, df, query, n=3, pprint=True):
-        query_embedding = get_embedding(
-            query,
-            engine="text-embedding-ada-002"
-        )
-        df["similarity"] = df.embeddings.apply(lambda x: cosine_similarity(x, query_embedding))
-        
-        results = df.sort_values("similarity", ascending=False, ignore_index=True)
-        # make a dictionary of the the first three results with the page number as the key and the text as the value. The page number is a column in the dataframe.
-        results = results.head(n)
-        global sources 
-        sources = []
-        for i in range(n):
-            # append the page number and the text as a dict to the sources list
-            sources.append({'Page '+str(results.iloc[i]['page']): results.iloc[i]['text'][:150]+'...'})
-        print(sources)
-        return results.head(n)
-    
-    def create_prompt(self, df, user_input):
-        result = self.search(df, user_input, n=3)
-        print(result)
-        system_role = """whose expertise is reading and summarizing scientific papers. You are given a query, 
-        a series of text embeddings and the title from a paper in order of their cosine similarity to the query. 
-        You must take the given embeddings and return a very detailed summary of the paper in the languange of the query: 
-            
-        Here is the question: """+ user_input + """
-            
-        and here are the embeddings: 
-            
-            1.""" + str(result.iloc[0]['text']) + """
-            2.""" + str(result.iloc[1]['text']) + """
-            3.""" + str(result.iloc[2]['text']) + """
-
-        """
-
-        user_content = f"""Given the question: "{str(user_input)}". Return a detailed answer based on the paper:"""
-
-        messages = [
-        {"role": "system", "content": system_role},
-        {"role": "user", "content": user_content},]
-
-        print('Done creating prompt')
-        return messages
-
-    def gpt(self, prompt):
-
-        system_role = """whose expertise is reading and summarizing scientific papers. You are given a query, 
-        a series of text embeddings and the title from a paper in order of their cosine similarity to the query. 
-        You must take the given embeddings and return a very detailed summary of the paper in the languange of the query: 
-            
-        Here is the question: """+ prompt + """
-            
-        and here is the text: 
-            
-            str(${pageContent})
-
-        """
-
-        user_content = f"""Given the question: "{str(prompt)}". Return a detailed answer based on the paper:"""
-
-        messages = [
-        {"role": "system", "content": system_role},
-        {"role": "user", "content": user_content},]
-
-        print('Done creating prompt')
-        print('Sending request to GPT-3')
-
-        openai.api_key = os.getenv('OPENAI_API_KEY')
-        r = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=0.7, max_tokens=1500)
-        answer = r.choices[0]["message"]["content"]
-        print('Done sending request to GPT-3')
-        response = {'answer': answer, 'sources': sources}
-        return response
 
 @app.route('/viewer')
 def viewer():
@@ -284,6 +209,7 @@ def save_file():
 
     else:
         print('File type not supported')
+        print(content_type)
         return jsonify({"error": "File type not supported"})
 
 
@@ -313,6 +239,18 @@ def get_file(file_id):
     
     url = blob.public_url
     print('File url: ', url)
+
+    # Get the file from GCP bucket
+    if file_type == 'text/plain':
+        print('File is pdf')
+        file_type = 'text/plain'
+        text = blob.download_as_string()
+        chatbot = Chatbot()
+        df = chatbot.extract_df(text)
+        print(df)
+        json_str = df.to_json(orient='records')
+        return jsonify({"url": url, "file_type": file_type, "df": json_str})
+
     
     return jsonify({"url": url, "file_type": file_type})
     
@@ -320,42 +258,6 @@ def get_file(file_id):
 @app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
-
-@app.route("/process_pdf", methods=['POST'])
-def process_pdf():
-    print("Processing pdf")
-    print(request)
-    # print('the data')
-    # print(request.data)
-    file = request.data
-
-    key = md5(file).hexdigest()
-    print(key)
-    # Create a Cloud Storage client.
-    gcs = storage.Client()
-    name = key+'.json'
-
-    # Get the bucket that the file will be uploaded to.
-    bucket = gcs.get_bucket(CLOUD_STORAGE_BUCKET)
-    # Check if the file already exists
-    if bucket.blob(name).exists():
-        print("File already exists")
-        print("Done processing pdf")
-        return {"key": key}
-
-    pdf = PdfReader(BytesIO(file))
-    chatbot = Chatbot()
-    paper_text = chatbot.extract_text(pdf)
-    df = chatbot.create_df(paper_text)
-    df = chatbot.embeddings(df)
-    
-    # Create a new blob and upload the file's content.
-    blob = bucket.blob(name)
-    blob.upload_from_string(df.to_json(), content_type='application/json')
-    # if db.get(key) is None:
-    #     db.set(key, df.to_json())
-    print("Done processing pdf")
-    return {"key": key}
 
 # a function save that takes in a dataframe and saves it to gcs
 @app.route("/save", methods=['POST'])

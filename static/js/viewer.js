@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     const file_id = urlParams.get("file_id");
     const type = urlParams.get("type");
     const str = urlParams.get("str");
+    const u = urlParams.get("url");
     const key = file_id
     sessionStorage.setItem("pdf-key", key);
 
@@ -21,8 +22,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     chat.appendChild(loading);
 
     var m = await getGPTModel();
-
-    download();
     
     window.onload = async function() {
       // check if the user has already saved an API key
@@ -48,161 +47,56 @@ document.addEventListener("DOMContentLoaded", async function() {
       }
     };
 
+    if (u && u.includes("github")){
+      viewer.src = u.replace("github", "github1s");
+      return;
+    } else if (u && type === "application/msword" || type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || u.includes("doc")) {
+      console.log('moose');
+      viewer.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + u;
+    } else if (u) {
+      console.log('duck');
+      viewer.src = u;
+    } else {
+      download();
+    }
+
     async function download(){
-        async function getFileURL(key) {
-            const response = await fetch(`/get_file/${key}`, {
-              method: 'GET',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Type': type
-              }
-              });
-            
-          if (response.status !== 200) {
-              alert('There was an error. Please try again.');
-              throw new Error('Error: ' + response.status);
+      async function getFileURL(key) {
+          const response = await fetch(`/get_file/${key}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Type': type
             }
-            console.log(response);
-            const data = await response.json();
-            return data;
+            });
+          
+        if (response.status !== 200) {
+            alert('There was an error. Please try again.');
+            throw new Error('Error: ' + response.status);
           }
-      
-        
-        const file = await getFileURL(key);
-        console.log(file);
-
-        if (type === "application/msword" || type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-            // Change the iframe src to the file url
-            viewer.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + file.url;
-            
-            try {
-                const response = await fetch('/download_pdf', {
-                    method: 'POST',
-                    body: JSON.stringify({ key: sessionStorage.getItem("pdf-key"), url: file.url, model: m, type: type }),
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                const data = await response.json();
-
-                if (data.exists === true) {
-                    console.log("Embeddings already exist");
-                    chat.removeChild(loading);
-                    document.querySelector("input[name='chat']").readOnly = false;
-                    document.querySelector("input[name='chat']").value = "";
-                    return;
-                  }
-        
-                try {
-        
-                  const e = await embeddings(data.df);
-                  // if e is null or undefined or error, then return. Don't save the embeddings
-                  if (e === "error") {
-                      console.log("Embeddings could not be calculated");
-                      loading = document.getElementById("loading");
-                      loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
-                      alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
-                      return false;
-                  } else if (e === null || e === undefined) {
-                      console.log("Embeddings could not be calculated");
-                      loading = document.getElementById("loading");
-                      loading.innerHTML = "Error: Embeddings could not be calculated. Please try again later.";
-                      alert("Error: Embeddings could not be calculated. Please try again later.");
-                      return false;
-                  } else {
-                      // Make a post request to /save with the key and embeddings
-                      const saveResponse = await fetch("/save", {
-                        method: "POST",
-                        body: JSON.stringify({key: sessionStorage.getItem("pdf-key"), df: e}),
-                        headers: {
-                          "Content-Type": "application/json",
-                          "Access-Control-Allow-Origin": "*",
-                          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-                          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                        },
-                      });
-              
-                      const saveData = await saveResponse.json();
-                      chat.removeChild(loading);
-                      document.querySelector("input[name='chat']").readOnly = false;
-                      document.querySelector("input[name='chat']").value = "";
-        
-                      console.log(saveData);
-                      // if (saveData.success) is true, then return
-                      if (saveData.success === true) {
-                        console.log("Embeddings saved successfully");
-                        return;
-                      }
-                    }
-        
-                } catch (error) {
-                  console.log(error);
-                  console.log("Embeddings could not be calculated");
-                  loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
-                  alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
-                  return false;   
-                }
-            } catch (error) {
-                console.log(error);
-            }
-
+          console.log(response);
+          const data = await response.json();
+          return data;
         }
+    
+      const file = await getFileURL(key);
+      console.log(file);
+
+      if (type === "application/msword" || type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+          // Change the iframe src to the file url
+          viewer.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + file.url;
           
-        if (type === "application/pdf") {
-            try {
-              // x.value = "Loading...";
-              console.log(file.url);
-          
-              const response = await fetch(file.url);
-              if (!response.ok) {
-                throw new Error("Failed to download PDF.");
-              }
-          
-              const pdfBlob = await response.blob();
-          
-              const pdfUrl = URL.createObjectURL(pdfBlob);
-              // const pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
-          
-              viewer.src = pdfUrl;
-              container.style.display = "flex";
-              viewer.style.display = "block";
-      
-              const chatInput = document.querySelector("input[name='chat']");
-              chatInput.value = "Please wait while the PDF is being loaded...";
-              chatInput.readOnly = true;
-      
-              // Convert the Blob to an ArrayBuffer
-              const buffer = await pdfBlob.arrayBuffer();
-      
-              function arrayBufferToBase64(buffer) {
-                  let binary = '';
-                  const bytes = new Uint8Array(buffer);
-                  const len = bytes.byteLength;
-                
-                  for (let i = 0; i < len; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                  }
-                
-                  return btoa(binary);
-                }
-      
-              const base64 = arrayBufferToBase64(buffer);
-                
-              // Send the Base64 string in the request body
-              const df = await fetch("/download_pdf", {
-              method: "POST",
-              body: JSON.stringify({ key: sessionStorage.getItem("pdf-key"), data: base64, model: m, type: type }),
-              headers: {
-                  "Content-Type": "application/json",
-                  "Access-Control-Allow-Origin": "*",
-                  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-                  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-              },
+          try {
+              const response = await fetch('/download_pdf', {
+                  method: 'POST',
+                  body: JSON.stringify({ key: sessionStorage.getItem("pdf-key"), url: file.url, model: m, type: type }),
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
               });
-      
-              const data = await df.json();
-      
+
+              const data = await response.json();
+
               if (data.exists === true) {
                   console.log("Embeddings already exist");
                   chat.removeChild(loading);
@@ -260,36 +154,153 @@ document.addEventListener("DOMContentLoaded", async function() {
                 alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
                 return false;   
               }
-            } catch (error) {
+          } catch (error) {
               console.log(error);
-              console.log("PDF could not be downloaded");
-              loading.innerHTML = "Error: PDF could not be downloaded. Please try again later.";
-              alert("Error: PDF could not be downloaded. Please try again later.");
-              return false;
-            }
           }
 
-        if (type === "plain/text") {
-            document.querySelector("input[name='chat']").readOnly = false;
-            document.querySelector("input[name='chat']").value = "";
-
-            const iframe = document.getElementById("pdf-viewer");
-            iframe.style.display = "none";
-
-            const c = document.getElementById("container");
-
-            const text =  document.createElement("p");
-            text.innerHTML = str;
-            text.style.margin = "1rem";
-            text.style.padding = "0";
-            text.style.fontSize = "1.5rem";
-            text.style.fontWeight = "bold";
-            text.style.color = "white";
-            text.style.textAlign = "center";
-
-            // Add text inside container as the first child
-            c.insertBefore(text, c.firstChild);
+      }
+        
+      if (type === "application/pdf") {
+          try {
+            // x.value = "Loading...";
+            console.log(file.url);
+        
+            const response = await fetch(file.url);
+            if (!response.ok) {
+              throw new Error("Failed to download PDF.");
+            }
+        
+            const pdfBlob = await response.blob();
+        
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            // const pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+        
+            viewer.src = pdfUrl;
+            container.style.display = "flex";
+            viewer.style.display = "block";
+    
+            const chatInput = document.querySelector("input[name='chat']");
+            chatInput.value = "Please wait while the PDF is being loaded...";
+            chatInput.readOnly = true;
+    
+            // Convert the Blob to an ArrayBuffer
+            const buffer = await pdfBlob.arrayBuffer();
+    
+            function arrayBufferToBase64(buffer) {
+                let binary = '';
+                const bytes = new Uint8Array(buffer);
+                const len = bytes.byteLength;
+              
+                for (let i = 0; i < len; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+              
+                return btoa(binary);
+              }
+    
+            const base64 = arrayBufferToBase64(buffer);
+              
+            // Send the Base64 string in the request body
+            const df = await fetch("/download_pdf", {
+            method: "POST",
+            body: JSON.stringify({ key: sessionStorage.getItem("pdf-key"), data: base64, model: m, type: type }),
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            },
+            });
+    
+            const data = await df.json();
+    
+            if (data.exists === true) {
+                console.log("Embeddings already exist");
+                chat.removeChild(loading);
+                document.querySelector("input[name='chat']").readOnly = false;
+                document.querySelector("input[name='chat']").value = "";
+                return;
+              }
+    
+            try {
+    
+              const e = await embeddings(data.df);
+              // if e is null or undefined or error, then return. Don't save the embeddings
+              if (e === "error") {
+                  console.log("Embeddings could not be calculated");
+                  loading = document.getElementById("loading");
+                  loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
+                  alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
+                  return false;
+              } else if (e === null || e === undefined) {
+                  console.log("Embeddings could not be calculated");
+                  loading = document.getElementById("loading");
+                  loading.innerHTML = "Error: Embeddings could not be calculated. Please try again later.";
+                  alert("Error: Embeddings could not be calculated. Please try again later.");
+                  return false;
+              } else {
+                  // Make a post request to /save with the key and embeddings
+                  const saveResponse = await fetch("/save", {
+                    method: "POST",
+                    body: JSON.stringify({key: sessionStorage.getItem("pdf-key"), df: e}),
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Access-Control-Allow-Origin": "*",
+                      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+                      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    },
+                  });
+          
+                  const saveData = await saveResponse.json();
+                  chat.removeChild(loading);
+                  document.querySelector("input[name='chat']").readOnly = false;
+                  document.querySelector("input[name='chat']").value = "";
+    
+                  console.log(saveData);
+                  // if (saveData.success) is true, then return
+                  if (saveData.success === true) {
+                    console.log("Embeddings saved successfully");
+                    return;
+                  }
+                }
+    
+            } catch (error) {
+              console.log(error);
+              console.log("Embeddings could not be calculated");
+              loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
+              alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
+              return false;   
+            }
+          } catch (error) {
+            console.log(error);
+            console.log("PDF could not be downloaded");
+            loading.innerHTML = "Error: PDF could not be downloaded. Please try again later.";
+            alert("Error: PDF could not be downloaded. Please try again later.");
+            return false;
+          }
         }
+
+      if (type === "plain/text") {
+          document.querySelector("input[name='chat']").readOnly = false;
+          document.querySelector("input[name='chat']").value = "";
+
+          const iframe = document.getElementById("pdf-viewer");
+          iframe.style.display = "none";
+
+          const c = document.getElementById("container");
+
+          const text =  document.createElement("p");
+          text.innerHTML = str;
+          text.style.margin = "1rem";
+          text.style.padding = "0";
+          text.style.fontSize = "1.5rem";
+          text.style.fontWeight = "bold";
+          text.style.color = "white";
+          text.style.textAlign = "center";
+
+          // Add text inside container as the first child
+          c.insertBefore(text, c.firstChild);
+      }
     }
 
     async function getGPTModel() {
@@ -401,33 +412,52 @@ document.addEventListener("DOMContentLoaded", async function() {
     }  
 
     async function create_prompt(user_input) {
+      console.log("Creating prompt");
+
       // check if pdf-key is not null
       if (sessionStorage.getItem("pdf-key") === null || sessionStorage.getItem("pdf-key") === "" || sessionStorage.getItem("pdf-key") === "undefined") {
         alert("Please upload a PDF file first or refresh the page and try again.");
         return;
       }
-      const response = await fetch('/get_df', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            'key': sessionStorage.getItem("pdf-key"),
-            'query': user_input,
-            })
-        })
-        .catch((error) => {
-          console.log('Error:', error);
-          document.getElementById('loading').innerHTML = 'Error: ' + error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
-        });
-      const data = await response.json();
-      df = data.df;
-      if (data.error) {
-        alert(data.error);
-        document.getElementById('loading').innerHTML = 'Error: ' + data.error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
-        return;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const u = urlParams.get('url');
+      console.log(u);
+      
+      if (u) {
+        // fetch /get_file/<file_id> and get df
+        console.log("cat");
+        const response = await fetch(`/get_file/${file_id}`);
+        var data = await response.json();
+        console.log(data.df);
+        var df = data.df;
       }
+      else {
+        const response = await fetch('/get_df', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              'key': sessionStorage.getItem("pdf-key"),
+              'query': user_input,
+              })
+          })
+          .catch((error) => {
+            console.log('Error:', error);
+            document.getElementById('loading').innerHTML = 'Error: ' + error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
+          });
+        const data = await response.json();
+        var df = data.df;
+        if (data.error) {
+          alert(data.error);
+          document.getElementById('loading').innerHTML = 'Error: ' + data.error + '. Please make sure your api key is correct and try again. Close this tab and refresh the page to try again.';
+          return;
+        }
+       }
+
       df = JSON.parse(df);
+
       const x = await search(df, user_input);
       const result = x.results;
       const sources = x.sources;

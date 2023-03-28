@@ -124,6 +124,16 @@ function handleParagraphEllipsis() {
   }
 }
 
+// A function getPageContent that given a url returns the text in the body of the page
+async function getPageContent(url) {
+  const response = await fetch(url);
+  const html = await response.text();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const body = doc.querySelector("body");
+  return body.innerText;
+}
+
 async function handleSubmitEvent() {
   y = document.querySelector("#url");
   var x = document.querySelector("input[name='pdf-url']");
@@ -133,11 +143,28 @@ async function handleSubmitEvent() {
     if (url === "") {
         return;
     }
-    // if the url does not end with .pdf, make x.value = "Error: URL does not end with .pdf"
+
     if (!url.endsWith(".pdf")) {
-        url.value = "Error: URL does not end with .pdf";
+        text = getPageContent(url);
+        console.log(text);
+
+        // Save the text to the database
+        const file_id = await saveFile(text, "text/plain");
+        if (file_id) {
+          window.location.href = `/viewer?url=${url}&file_id=${file_id}&type=text/plain`;
+        }
+    }
+
+    // if the url has github in it then
+    if (url.includes("github")) {
+        // get the raw url
+        var raw_url = url.replace("github", "raw.githubusercontent");
+        raw_url = raw_url.replace("blob/", "");
+        console.log(raw_url);
+        window.location.href = `/viewer?url=${url}`;
         return;
     }
+
     x.value = "Loading...";
     console.log(url);
 
