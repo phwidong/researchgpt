@@ -1,8 +1,22 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+  const x = document.getElementById("url");
+  x.value = ""
+
   const openPopupBtn = document.getElementById('open-popup-btn');
   const popupCard = document.getElementById('popup-card');
   const sidebar = document.getElementById('sidebar');
+
+  document.getElementById("save-openai-key").addEventListener("click", function () {
+    var openaiKey = document.getElementById("openai-key").value;
+    if (openaiKey) {
+      sessionStorage.setItem("openai_key", openaiKey);
+      document.getElementById("openai-key").value = "Saved!"
+      document.getElementById("openai-key").value = "";
+    } else {
+      alert("Please enter a valid OpenAI key.");
+    }
+  });  
   
   openPopupBtn.addEventListener('click', () => {
       popupCard.classList.toggle('hidden');
@@ -168,15 +182,38 @@ async function handleSubmitEvent() {
     x.value = "Loading...";
     console.log(url);
 
-    file = await fetch(url).then(r => r.blob());
+    let file_id = null;
 
-    // Convert the Blob to an ArrayBuffer
-    const buffer = await file.arrayBuffer();
-    
-    const file_id = await saveFile(buffer, file.type);
-    console.log(file_id);
-    if (file_id) {
-      window.location.href = `/viewer?file_id=${file_id}&type=${file.type}`;
+    try {
+      file = await fetch(url).then(r => {
+        if (!r.ok) {
+          throw new Error(`Network response was not ok: ${r.statusText}`);
+        }
+        return r.blob();
+      });
+
+      console.log("Duck");
+
+      // Convert the Blob to an ArrayBuffer
+      const buffer = await file.arrayBuffer();
+
+      file_id = await saveFile(buffer, file.type);
+      console.log(file_id);
+
+    } catch (error) {
+      console.log("Goose")
+      console.error('There was a problem with the fetch operation:', error);
+      alert('There was an error fetching the file. Please try again.');
+      x.value = "Error!";
+    } finally {
+      console.log("DOG")
+      if (file_id) {
+        x.value = "Enter a URL...";
+        window.location.href = `/viewer?file_id=${file_id}&type=${file.type}`;
+        x.value = "";
+      } else {
+        x.value = "";
+      }
     }
   });
 }

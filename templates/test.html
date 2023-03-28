@@ -14,17 +14,33 @@
   </script>
   <body>
     <nav class="navbar">  
-      <div class="toggle-icon" onclick="toggleSidebar(event)">
-        <span style="color: white;">&#9776;</span>
+      <div class="toggle-icon" style="padding-bottom: 11px;" onclick="toggleSidebar(event)">
+        <span style="color: white;" >&#9776;</span>
       </div>
+      <a href="/" style="justify-self: center; margin-left: 210px;
+      font-family: 'Roboto', serif;
+      color: azure;
+      font-size: 30px;
+      font-weight: 50;">[DaRa]</a>
       <div style="display: flex; flex-direction: row; justify-content: right; align-items: center;">
-        <a href="https://chrome.google.com/webstore/detail/your-extension-id" target="_blank">Try Chrome Extension</a>
-      <button id="enter-btn" class="enter-btn" onclick="location.href='app.html'" style="margin-right: 60px; margin-top: 10px;">Sign Up</button>
+        <p class="logo">[DaRa]</p>
+        <button id="enter-btn" class="enter-btn" onclick="location.href='https://forms.gle/PzBGRsd2ynSTqUWm8'" style="margin-right: 60px; margin-top: 10px;">Sign Up</button>
       </div>
     </nav>
     <div class="sidebar">
-        <!-- Add your sidebar content here -->
-    </div>
+      <div style="margin-top: 100px; margin-left: 25px;">
+        <a href="https://github.com/mukulpatnaik/researchgpt" class="option-link" style="color: lightgrey;">Github</a>
+        <a href="mailto:mukulpatnaik@gmail.com" class="option-link" style="color: lightgrey;">Contact</a>
+        <a href="https://example.com/link2" class="option-link">Chrome Extension</a>
+        <span class="coming-soon">(coming soon)</span>
+
+        <div class="openai-key-container" style="margin-top: 420px; display: block; text-align: center; align-items: center;">
+          <label for="openai-key" style="color: lightgrey;">OpenAI Key:</label>
+          <input type="text" id="openai-key" style="color: lightgray; padding: 10px; background-color: black; font: 1.4em Roboto; font-style: italic; width: 100%; border: 1px solid gray; border-radius: 15px; margin-top: 20px; margin-bottom: 20px;">
+          <button id="save-openai-key" style="margin-left: 5px;">Save</button>
+        </div>        
+      </div>
+    </div>    
     <form id='url' style="margin-top: 290px; margin-bottom: 20px; width: 100%; text-align: center;">
         <input type="text" name="pdf-url" placeholder="Enter URL" style="color: lightgray; padding: 10px; border: none; background-color: black; font: 1.4em Roboto; font-style: italic; width: 100%; text-align: center">
     </form>

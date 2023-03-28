@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     container.style.display = "flex";
 
     loading = document.createElement("p");
+    loading.id = "loading";
     loading.style.color = "lightgray";
     loading.style.fontSize = "14px";
     loading.innerHTML = "";
@@ -50,10 +51,10 @@ document.addEventListener("DOMContentLoaded", async function() {
     if (u && u.includes("github")){
       viewer.src = u.replace("github", "github1s");
       return;
-    } else if (u && type === "application/msword" || type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || u.includes("doc")) {
+    } else if (u && u.includes("doc")) {
       console.log('moose');
       viewer.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + u;
-    } else if (u) {
+    } else if (u && !u.includes("github") && !u.includes("doc") && !u.includes("pdf")) {
       console.log('duck');
       viewer.src = u;
     } else {
@@ -167,6 +168,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         
             const response = await fetch(file.url);
             if (!response.ok) {
+              alert("Failed to download PDF. Please try uploading a local file.");
               throw new Error("Failed to download PDF.");
             }
         
@@ -253,8 +255,9 @@ document.addEventListener("DOMContentLoaded", async function() {
           
                   const saveData = await saveResponse.json();
                   chat.removeChild(loading);
-                  document.querySelector("input[name='chat']").readOnly = false;
+                  
                   document.querySelector("input[name='chat']").value = "";
+                  document.querySelector("input[name='chat']").readOnly = false;
     
                   console.log(saveData);
                   // if (saveData.success) is true, then return
@@ -325,6 +328,8 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     async function embeddings(df) {
       console.log('Calculating embeddings');
+      loading = document.getElementById("loading");
+      loading.innerHTML = "Calculating embeddings...";
       const openaiApiKey = sessionStorage.getItem("openai_key");
       const embeddingModel = "text-embedding-ada-002";
       df = JSON.parse(df);
@@ -523,7 +528,8 @@ document.addEventListener("DOMContentLoaded", async function() {
         console.log('Sending request to OpenAI');
       
         console.log('messages: ', messages);
-        const m = await getGPTModel();
+        console.log('model: ', m);
+
         const openaiApiKey = sessionStorage.getItem("openai_key");
         const response = await fetch('https://api.openai.com/v1/chat/completions?stream=true', {
             method: 'POST',
@@ -533,8 +539,8 @@ document.addEventListener("DOMContentLoaded", async function() {
             },
             body: JSON.stringify({
                 messages: messages,
-                model: 'gpt-4',
-                max_tokens: 150,
+                model: m,
+                max_tokens: 1500,
                 n: 1,
                 temperature: 0.4,
                 frequency_penalty: 0,
@@ -546,6 +552,8 @@ document.addEventListener("DOMContentLoaded", async function() {
 
         const loading = document.getElementById('loading');
         chat.removeChild(loading);
+        document.querySelector("input[name='chat']").readOnly = false;
+        document.querySelector("input[name='chat']").value = "";
 
         const reader = response.body.getReader();
         while (true) {
@@ -626,6 +634,5 @@ document.addEventListener("DOMContentLoaded", async function() {
             chat.appendChild(source);
           }
 
-          document.querySelector("input[name='chat']").value = "";
         });
 });

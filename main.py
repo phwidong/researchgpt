@@ -1,5 +1,4 @@
 from flask import Flask, request, render_template, jsonify, Response, send_file, make_response
-from pdf2image import convert_from_path
 import base64
 from io import BytesIO
 from PyPDF2 import PdfReader
@@ -15,8 +14,8 @@ import docx
 
 app = Flask(__name__)
 
-os.environ['CLOUD_STORAGE_BUCKET'] = 'researchgpt.appspot.com'
-CLOUD_STORAGE_BUCKET = 'mukuls-public-bucket'
+# os.environ['CLOUD_STORAGE_BUCKET'] = 'researchgpt.appspot.com'
+CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
 
 CORS(app)
 
@@ -127,16 +126,12 @@ class Chatbot():
 def viewer():
     return render_template('viewer.html')
 
-@app.route('/plus.png', methods=['GET'])
-def title():
-    return send_file('plus.png', mimetype='image/png')
+# @app.route('/plus.png', methods=['GET'])
+# def title():
+#     return send_file('plus.png', mimetype='image/png')
 
 @app.route('/app.html', methods=['GET'])
 def grid():
-    return render_template('grid.html')
-
-@app.route('/test.html', methods=['GET'])
-def test():
     return render_template('test.html')
 
 @app.route('/save_file', methods=['POST'])

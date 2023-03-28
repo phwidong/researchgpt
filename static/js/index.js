@@ -1,45 +1,12 @@
 // index.js
 
 document.addEventListener("DOMContentLoaded", function () {
-    initializeUI();
-
-    function toggleSidebar() {
-      const sidebar = document.querySelector(".sidebar");
-      sidebar.classList.toggle("active");
-    }
-    
-    function isInside(target, element) {
-      return element.contains(target) || target === element;
-    }
-    
-    document.addEventListener("click", function (event) {
-      const sidebar = document.querySelector(".sidebar");
-      const toggleIcon = document.querySelector(".toggle-icon");
-      const isClickInsideSidebar = isInside(event.target, sidebar);
-      const isClickInsideToggleIcon = isInside(event.target, toggleIcon);
-    
-      if (!isClickInsideSidebar && !isClickInsideToggleIcon && sidebar.classList.contains("active")) {
-        toggleSidebar();
-      }
-    });
   
     var TxtRotate = createTxtRotateClass();
     initializeTxtRotate(TxtRotate);
   
     handleParagraphEllipsis();
   });
-  
-  function initializeUI() {
-    const input = document.querySelector("input[type='file']");
-    var uploadBtn = document.querySelector(".upload-btn");
-    const viewer = document.querySelector("#pdf-viewer");
-    const container = document.querySelector("#container");
-    var x = document.querySelector("input[name='pdf-url']");
-    const form = document.querySelector("form");
-    const p = document.querySelector("p");
-    const up = document.querySelector("#up");
-    const y = document.querySelector("#url");
-  }
   
   function createTxtRotateClass() {
     return function (el, toRotate, period) {

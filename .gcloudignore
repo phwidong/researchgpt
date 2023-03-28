@@ -13,6 +13,8 @@
 .git
 .gitignore
 main-local.py
+main-local-redis.py
+
 
 # Python pycache:
 __pycache__/

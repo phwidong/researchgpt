@@ -28,7 +28,11 @@ handlers:
 - url: /_ah/warmup
   script: main.py
 
-- url: /process_pdf
+- url: /save
+  script: main.py
+  secure: always
+
+- url: /get_df
   script: main.py
   secure: always
 
@@ -37,6 +41,22 @@ handlers:
   secure: always
 
 - url: /reply
+  script: main.py
+  secure: always
+
+- url: /viewer
+  script: main.py
+  secure: always
+
+- url: /save_file
+  script: main.py
+  secure: always
+
+- url: /app.html
+  script: main.py
+  secure: always
+
+- url: /get_file/<file_id>
   script: main.py
   secure: always
 
