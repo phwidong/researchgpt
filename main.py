@@ -1,4 +1,7 @@
-from flask import Flask, request, render_template, jsonify, Response, send_file, make_response
+from fastapi import FastAPI, Request, Header
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from fastapi.templating import Jinja2Templates
 import base64
 from io import BytesIO
 from PyPDF2 import PdfReader
@@ -7,17 +10,23 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
 import os
 import requests
-from flask_cors import CORS
 from _md5 import md5
-from google.cloud import storage
 import docx
+from azure.storage.blob import ContentSettings
 
-app = Flask(__name__)
+from azure.storage.blob import BlobServiceClient
 
-# os.environ['CLOUD_STORAGE_BUCKET'] = 'researchgpt.appspot.com'
-CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
+# Replace this with your connection string
+azure_connection_string = "DefaultEndpointsProtocol=https;AccountName=darablobstorage;AccountKey=elaFVu4ns1hes6/04ZGjAeC7WiYCVXK9cMzK60J18gve/GZNqgqtVxToPf4sEZ/+orgdZ6+9sGqt+AStDb3e8w==;EndpointSuffix=core.windows.net"
+container_name = "docs"
 
-CORS(app)
+# Create the BlobServiceClient object
+blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
+container_client = blob_service_client.get_container_client(container_name)
+
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 class Chatbot():
     
@@ -122,214 +131,209 @@ class Chatbot():
         print('Done creating dataframe')
         return df
 
-@app.route('/viewer')
-def viewer():
-    return render_template('viewer.html')
+@app.get('/viewer')
+async def viewer(request: Request):
+    return templates.TemplateResponse('viewer.html', {"request": request})
 
-# @app.route('/plus.png', methods=['GET'])
-# def title():
-#     return send_file('plus.png', mimetype='image/png')
+@app.get('/app.html')
+async def grid(request: Request):
+    return templates.TemplateResponse('test.html', {"request": request})
 
-@app.route('/app.html', methods=['GET'])
-def grid():
-    return render_template('test.html')
+@app.get("/")
+@app.post("/")
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-@app.route('/save_file', methods=['POST'])
-def save_file():
+@app.post('/save_file')
+async def save_file(request: Request, model: str = Header(None), content_type: str = Header(None)):
     print('Saving file')
-    file = request.data
-    # Get model from header
-    model = request.headers.get('model')
+    file = await request.body()
     print(model)
     key = md5(file).hexdigest()
     print(key)
 
-    # get content type from header
-    content_type = request.headers.get('Content-Type')
+    # # Check if the file already exists
+    blob_name = key
+    # blob_exists = any(blob.name == blob_name for blob in container_client.list_blobs())
 
-    # Save file to GCP bucket
-    gcs = storage.Client()
-    bucket = gcs.get_bucket('mukuls-public-bucket')
-    if not bucket:
-        print('Bucket does not exist')
-        return jsonify({"error": "Bucket does not exist"})
-    # check if file already exists
-    blob = bucket.blob(key)
-    if blob.exists():
-        print('File already exists')
-        return jsonify({"key": key, "exists": True})
+    # if blob_exists:
+    #     print("File already exists")
+    #     return JSONResponse(content={"key": key, "exists": True})
 
-    # If the file is type docx or msword, save it to GCP bucket as msword
-    if content_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or content_type == 'application/msword':
-        print('File is docx')
-        file_type = 'application/msword'
-        bucket = gcs.get_bucket('mukuls-public-bucket')
-        blob = bucket.blob(key)
-        if not bucket:
-            print('Bucket does not exist')
-            return jsonify({"error": "Bucket does not exist"})
-                # check if file already exists
-        blob = bucket.blob(key)
-        if blob.exists():
-            print('File already exists')
-            return jsonify({"key": key, "exists": True})
+    # If the file doesn't exist, create a new blob client and save the file to Azure Blob Storage
+    blob_client = container_client.get_blob_client(blob_name)
+    content_settings = ContentSettings(content_type=content_type)
+    blob_client.upload_blob(file, blob_type="BlockBlob", content_settings=content_settings, overwrite=True)
 
-        blob.upload_from_string(file, content_type=file_type)
-        print('File saved to GCP bucket')
-        return jsonify({"key": key, "exists": False, "file_type": file_type})
-
-    elif content_type == 'application/pdf':
-        print('File is pdf')
-        file_type = 'application/pdf'
-
-        blob = bucket.blob(key)
-
-        # Check if the file already exists
-        if bucket.blob(key).exists():
-            print("File already exists")
-            print("Done processing pdf")
-            return {"key": key, "exists": True}
-        
-        blob.upload_from_string(file, content_type=file_type)
-
-        print("Done processing pdf")
-        return jsonify({"key": key, "exists": False, "file_type": file_type})
-
-    elif content_type == 'text/plain':
-        print('File is txt')
-        file_type = 'text/plain'
-        # Save file to GCP bucket
-        blob = bucket.blob(key)
-        blob.upload_from_string(file, content_type=file_type)
-
-    else:
-        print('File type not supported')
-        print(content_type)
-        return jsonify({"error": "File type not supported"})
-
-
-    print('File uploaded to GCP bucket')
-
-    return jsonify({"key": key, "exists": False, "file_type": file_type})
-
-
-@app.route('/get_file/<file_id>', methods=['GET'])
-def get_file(file_id):
-    # get 'type' from header
-    file_type = request.headers.get('type')
-    print('Getting file from GCP bucket')
-    print(file_id)
-    # Get file from GCP bucket
-    gcs = storage.Client()
-    bucket = gcs.get_bucket('mukuls-public-bucket')
-    if not bucket:
-        print('Bucket does not exist')
-        return jsonify({"error": "Bucket does not exist"})
-    # check if file already exists
-    blob = bucket.blob(file_id)
-
-    if not blob.exists():
-        print('File does not exist')
-        return jsonify({"error": "File does not exist"})
+    # directory = './files'
     
-    url = blob.public_url
+    # # Check if file exists in directory
+    # if os.path.isfile(f'{directory}/{key}'):
+    #     print('File already exists')
+    #     return JSONResponse(content={"key": key, "exists": True})
+    
+    # # Save the file to the directory
+    # with open(f'{directory}/{key}', 'wb') as f:
+    #     f.write(file)
+
+    print('File uploaded to Azure Blob Storage')
+
+    return JSONResponse(content={"key": key, "exists": False, "file_type": content_type})
+
+@app.get('/get_file/{file_id}')
+async def get_file(file_id: str, file_type: str = Header(None)):
+    print('Getting file from Azure Blob Storage')
+    print(file_id)
+
+    # Get the BlobClient for the file
+    container_client = blob_service_client.get_container_client(container_name)
+    blob_client = container_client.get_blob_client(file_id)
+
+    if not blob_client.exists():
+        print('File does not exist')
+        return JSONResponse(content={"error": "File does not exist"})
+
+    # directory = './files'
+    
+    # # Check if file exists in directory
+    # if os.path.isfile(f'{directory}/{file_id}'):
+    #     print('File already exists')
+    #     return JSONResponse(content={"key": file_id, "exists": True})
+    
+    # # Get the file from the directory
+    # with open(f'{directory}/{file_id}', 'rb') as f:
+    #     file = f.read()
+    
+    # if file_type == 'text/plain':
+    #     print('File is pdf')
+    #     file_type = 'text/plain'
+    #     text = file.decode('utf-8')
+    #     chatbot = Chatbot()
+    #     df = chatbot.extract_df(text)
+    #     print(df)
+    #     json_str = df.to_json(orient='records')
+    #     return JSONResponse(content={"url": file_id, "file_type": file_type, "df": json_str})
+
+    url = blob_client.url
     print('File url: ', url)
 
-    # Get the file from GCP bucket
+    # Get the file from Azure Blob Storage
     if file_type == 'text/plain':
         print('File is pdf')
         file_type = 'text/plain'
-        text = blob.download_as_string()
+        text = blob_client.download_blob().content_as_text()
         chatbot = Chatbot()
         df = chatbot.extract_df(text)
-        print(df)
+        # print(df)
         json_str = df.to_json(orient='records')
-        return jsonify({"url": url, "file_type": file_type, "df": json_str})
+        return JSONResponse(content={"url": url, "file_type": file_type, "df": json_str})
 
-    
-    return jsonify({"url": url, "file_type": file_type})
-    
+    # url = ""
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    return render_template("index.html")
+    return JSONResponse(content={"url": url, "file_type": file_type})
 
-# a function save that takes in a dataframe and saves it to gcs
-@app.route("/save", methods=['POST'])
-def save():
-    print("Saving df to gcs")
+@app.post("/save")
+async def save(request: Request):
+    print("Saving df to Azure Blob Storage")
 
-    df = request.json['df']
-    key = request.json['key']
+    request_data = await request.json()
+    df = request_data['df']
+    key = request_data['key']
 
     df = pd.DataFrame.from_dict(df)
-    
+
     # Return error if the dataframe is empty
     if df.empty:
-        return {"error": "No data found"}
-
-    # Create a Cloud Storage client.
-    gcs = storage.Client()
-    name = key+'.json'
-
-    # Get the bucket that the file will be uploaded to.
-    bucket = gcs.get_bucket(CLOUD_STORAGE_BUCKET)
-    # Check if the file already exists
-    if bucket.blob(name).exists():
-        print("File already exists")
-        print("Done processing pdf")
-        return {"key": key, "exists": True}
-
-    # Create a new blob and upload the file's content.
-    blob = bucket.blob(name)
-    blob.upload_from_string(df.to_json(), content_type='application/json')
+        return JSONResponse(content={"error": "No data found"})
     
-    print("Saved pdf")
-    return {"key": key, "exists": False}
+    # directory = './files'
+    
+    # # Check if file exists in directory
+    # if os.path.isfile(f'{directory}/{key}'):
+    #     print('File already exists')
+    #     return JSONResponse(content={"key": key, "exists": True})
+    
+    # # Save the df to the directory
+    # with open(f'{directory}/{key}', 'w') as f:
+    #     f.write(df.to_json())
 
-# a route to get the dataframe from the database
-@app.route("/get_df", methods=['POST'])
-def get_df():
+    # Get the container client
+    container_client = blob_service_client.get_container_client(container_name)
+    blob_name = key + '.json'
+
+    # # Check if the file already exists
+    # blob_exists = any(blob.name == blob_name for blob in container_client.list_blobs())
+    # print(blob_exists)
+
+    # if blob_exists:
+    #     print("File already exists")
+    #     print("Done processing pdf")
+    #     return JSONResponse(content={"key": key, "exists": True})
+
+    # If the file doesn't exist, create a new blob client and upload the file's content
+    blob_client = container_client.get_blob_client(blob_name)
+    blob_client.upload_blob(df.to_json(), content_type='application/json', overwrite=True)
+
+    print("Saved pdf")
+    return JSONResponse(content={"key": key, "exists": False})
+
+@app.post("/get_df")
+async def get_df(request: Request):
     print('Getting dataframe')
-    key = request.json['key']
+
+    request_data = await request.json()
+    key = request_data['key']
     print(key)
 
     if key is None or key == '' or key == 'null' or key == 'undefined':
         print("No key found")
-        return {"error": "No key found"}
+        return JSONResponse(content={"error": "No key found"})
 
-    query = request.json['query']
+    query = request_data['query']
     print(query)
+
+    # directory = './files'
+
+    # # Check if JSON exists in directory
+    # with open(f'{directory}/{key}', 'r') as f:
+    #     df = pd.read_json(f.read())
+
+    # Get the container client
+    container_client = blob_service_client.get_container_client(container_name)
+    blob_name = key + '.json'
+    blob_client = container_client.get_blob_client(blob_name)
+
+    # Check if the file exists
+    if not blob_client.exists():
+        return JSONResponse(content={"error": "File does not exist"})
     
-    # Create a Cloud Storage client.
-    gcs = storage.Client()
-    name = key+'.json'
-    bucket = gcs.get_bucket(CLOUD_STORAGE_BUCKET)
-    blob = bucket.blob(name)
-    if not blob.exists():
-        return {"error": "File does not exist"}
-    df = pd.read_json(BytesIO(blob.download_as_string()))
+    # Download and read the JSON file
+    with BytesIO() as json_buffer:
+        blob_client.download_blob().readinto(json_buffer)
+        json_buffer.seek(0)
+        df = pd.read_json(json_buffer)
 
     print('Done getting dataframe')
     json_str = df.to_json(orient='records')
 
-    return {"df": json_str}
+    return JSONResponse(content={"df": json_str})
 
-@app.route("/download_pdf", methods=['POST'])
-def download_pdf():
+@app.post("/download_pdf")
+async def download_pdf(request: Request):
     print("Downloading pdf")
-    print(request.json)
-    chatbot = Chatbot()
-    t = request.json['type']
 
-    model = request.json['model']
-    # print(data)
+    request_data = await request.json()
+    # print(request_data)
+    chatbot = Chatbot()
+    t = request_data['type']
+
+    model = request_data['model']
 
     if t == 'application/pdf':
         print('File is pdf')
         file_type = 'application/pdf'
-            
-        data = request.json['data']
+
+        data = request_data['data']
 
         # Decode the base64 string
         data = base64.b64decode(data)
@@ -340,13 +344,13 @@ def download_pdf():
 
         if model == 'gpt-4':
             df = chatbot.make_df(pdf)
-        else: 
+        else:
             paper_text = chatbot.extract_text(pdf)
             df = chatbot.create_df(paper_text)
         json_str = df.to_json(orient='records')
 
     elif t == 'application/msword' or t == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        url = request.json['url']
+        url = request_data['url']
         print(url)
         r = requests.get(url, allow_redirects=True, headers={
         "Origin": "appspot.com", 'Access-Control-Allow-Origin': '*',
@@ -355,7 +359,7 @@ def download_pdf():
 
         file = r.content
 
-        doc = docx.Document(BytesIO(file)) 
+        doc = docx.Document(BytesIO(file))
 
         key = md5(file).hexdigest()
 
@@ -364,7 +368,7 @@ def download_pdf():
         json_str = df.to_json(orient='records')
 
     else:
-        url = request.json['url']
+        url = request_data['url']
         print(url)
         r = requests.get(url, allow_redirects=True, headers={
         "Origin": "appspot.com", 'Access-Control-Allow-Origin': '*',
@@ -375,53 +379,40 @@ def download_pdf():
 
         key = md5(file).hexdigest()
 
-        # Make a dataframe of the text and paragraphs from 'file'
-        chatbot = Chatbot()
-
         def read_txt_file(file):
             paragraphs = file.split('\n').split('\r').replace('\n', '').replace('\r', '').replace('\t', '').replace('&#160;', '')
             df = pd.DataFrame(paragraphs, columns=['text'])
-            print(df)
+            # print(df)
             df['paragraph_number'] = df.index
             return df
-        
+
         df = read_txt_file(file.decode('utf-8'))
 
         json_str = df.to_json(orient='records')
 
-    # Create a Cloud Storage client.
-    gcs = storage.Client()
-    name = key+'.json'
+    # Get the container client
+    container_client = blob_service_client.get_container_client(container_name)
+    blob_name = key + '.json'
 
-    # Get the bucket that the file will be uploaded to.
-    bucket = gcs.get_bucket(CLOUD_STORAGE_BUCKET)
-    # Check if the file already exists
-    if bucket.blob(name).exists():
-        print("File already exists")
-        print("Done processing pdf")
-        return jsonify({"key": key, "exists": True})   
+    # # Check if the file already exists
+    # blob_exists = any(blob.name == blob_name for blob in container_client.list_blobs())
 
+    # if blob_exists:
+    #     print("File already exists")
+    #     print("Done processing pdf")
+    #     return JSONResponse(content={"key": key, "exists": True})
+
+    # If the file doesn't exist, create a new blob client and upload the JSON file to Azure Blob Storage
+    blob_client = container_client.get_blob_client(blob_name)
+    print('saved to blob storage')
+    blob_client.upload_blob(json_str, overwrite=True)
+
+
+    # directory = './files'
+
+    # # Save the df to the directory
+    # with open(f'{directory}/{key}', 'w') as f:
+    #     f.write(json_str)
 
     print("Done processing pdf")
-    return jsonify({"key": key, "exists": False, "df": json_str})
-
-@app.route("/reply", methods=['POST'])
-def reply():
-    chatbot = Chatbot()
-    key = request.json['key']
-    query = request.json['query']
-    query = str(query)
-    print(query)
-    # df = pd.read_json(BytesIO(db.get(key)))
-    gcs = storage.Client()
-    bucket = gcs.get_bucket(CLOUD_STORAGE_BUCKET)
-    blob = bucket.blob(key+'.json')
-    df = pd.read_json(BytesIO(blob.download_as_string()))
-    print(df.head(5))
-    prompt = chatbot.create_prompt(df, query)
-    response = chatbot.gpt(prompt)
-    print(response)
-    return response, 200
-
-if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    return JSONResponse(content={"key": key, "exists": False, "df": json_str})

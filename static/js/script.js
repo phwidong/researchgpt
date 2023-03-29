@@ -159,7 +159,7 @@ async function handleSubmitEvent() {
     }
 
     if (!url.endsWith(".pdf")) {
-        text = getPageContent(url);
+        text = await getPageContent(url);
         console.log(text);
 
         // Save the text to the database
@@ -310,7 +310,8 @@ async function handleFileInputChange() {
     console.log(file.name, file.size, file.type);
     const file_id = await saveFile(fileArrayBuffer, file.type);
     console.log(file_id);
-    window.location.href = `/viewer?file_id=${file_id}&type=application/pdf`;
+    type = file.type;
+    window.location.href = `/viewer?file_id=${file_id}&type=${type}`;
   });
   
   docxInput.addEventListener("change", async function () {
@@ -318,10 +319,11 @@ async function handleFileInputChange() {
     // Log the file name, size, and type
     console.log(file.name, file.size, file.type);
     const file_id = await saveFile(file, file.type);
+    type = file.type;
 
     console.log(file_id);
     if (file_id) {
-      window.location.href = `/viewer?file_id=${file_id}&type=application/msword`;
+      window.location.href = `/viewer?file_id=${file_id}&type=${type}`;
     }
   });
 }

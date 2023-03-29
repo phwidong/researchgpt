@@ -430,7 +430,6 @@ document.addEventListener("DOMContentLoaded", async function() {
       console.log(u);
       
       if (u) {
-        // fetch /get_file/<file_id> and get df
         console.log("cat");
         const response = await fetch(`/get_file/${file_id}`);
         var data = await response.json();
