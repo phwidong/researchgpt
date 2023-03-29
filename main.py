@@ -143,6 +143,7 @@ async def grid(request: Request):
 @app.post("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+        
 
 @app.post('/save_file')
 async def save_file(request: Request, model: str = Header(None), content_type: str = Header(None)):
@@ -152,16 +153,42 @@ async def save_file(request: Request, model: str = Header(None), content_type: s
     key = md5(file).hexdigest()
     print(key)
 
-    # # Check if the file already exists
-    blob_name = key
-    # blob_exists = any(blob.name == blob_name for blob in container_client.list_blobs())
+    print(content_type)
+
+    if content_type == 'text/plain':
+        print('File is text')
+        text = file.decode('utf-8')
+        # print(text)
+
+        # Create a new Document
+        doc = docx.Document()
+        paragraphs = text.split('\n')
+
+        # add each paragraph to the document as a new paragraph object
+        for paragraph in paragraphs:
+            doc.add_paragraph(paragraph)
+
+        # Save the Document to an in-memory buffer
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        # key = md5(buffer.getvalue()).hexdigest()
+
+        blob_client = container_client.get_blob_client(key)
+        content_settings = ContentSettings(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        blob_client.upload_blob(buffer, blob_type="BlockBlob", content_settings=content_settings, overwrite=True)
+
+        print(key)
+        return JSONResponse(content={"key": key, "exists": False, "file_type": 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})
+
 
     # if blob_exists:
     #     print("File already exists")
     #     return JSONResponse(content={"key": key, "exists": True})
 
     # If the file doesn't exist, create a new blob client and save the file to Azure Blob Storage
-    blob_client = container_client.get_blob_client(blob_name)
+    blob_client = container_client.get_blob_client(key)
     content_settings = ContentSettings(content_type=content_type)
     blob_client.upload_blob(file, blob_type="BlockBlob", content_settings=content_settings, overwrite=True)
 
@@ -175,6 +202,8 @@ async def save_file(request: Request, model: str = Header(None), content_type: s
     # # Save the file to the directory
     # with open(f'{directory}/{key}', 'wb') as f:
     #     f.write(file)
+
+    print('dog')
 
     print('File uploaded to Azure Blob Storage')
 
@@ -327,6 +356,10 @@ async def download_pdf(request: Request):
     chatbot = Chatbot()
     t = request_data['type']
 
+    key = request_data['key']
+
+    print(key)
+
     model = request_data['model']
 
     if t == 'application/pdf':
@@ -361,8 +394,6 @@ async def download_pdf(request: Request):
 
         doc = docx.Document(BytesIO(file))
 
-        key = md5(file).hexdigest()
-
         chatbot = Chatbot()
         df = chatbot.make_doc(doc)
         json_str = df.to_json(orient='records')
@@ -376,8 +407,6 @@ async def download_pdf(request: Request):
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'})
 
         file = r.content
-
-        key = md5(file).hexdigest()
 
         def read_txt_file(file):
             paragraphs = file.split('\n').split('\r').replace('\n', '').replace('\r', '').replace('\t', '').replace('&#160;', '')
@@ -394,13 +423,26 @@ async def download_pdf(request: Request):
     container_client = blob_service_client.get_container_client(container_name)
     blob_name = key + '.json'
 
-    # # Check if the file already exists
-    # blob_exists = any(blob.name == blob_name for blob in container_client.list_blobs())
+    blob_exists = False
 
-    # if blob_exists:
-    #     print("File already exists")
-    #     print("Done processing pdf")
-    #     return JSONResponse(content={"key": key, "exists": True})
+    print(blob_name)
+    print('duck')
+
+    for blob in container_client.list_blobs():
+        print(blob.name)
+        if blob.name == str(blob_name):
+            print('blob exists')
+            blob_exists = True
+            break
+
+    print('moose')
+
+    print(blob_exists)
+
+    if blob_exists:
+        print("File already exists")
+        print("Done processing pdf")
+        return JSONResponse(content={"key": key, "exists": True})
 
     # If the file doesn't exist, create a new blob client and upload the JSON file to Azure Blob Storage
     blob_client = container_client.get_blob_client(blob_name)

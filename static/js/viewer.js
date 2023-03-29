@@ -2,7 +2,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     const urlParams = new URLSearchParams(window.location.search);
     const file_id = urlParams.get("file_id");
     const type = urlParams.get("type");
-    const str = urlParams.get("str");
     const u = urlParams.get("url");
     const key = file_id
     sessionStorage.setItem("pdf-key", key);
@@ -62,6 +61,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     async function download(){
+
       async function getFileURL(key) {
           const response = await fetch(`/get_file/${key}`, {
             method: 'GET',
@@ -136,7 +136,6 @@ document.addEventListener("DOMContentLoaded", async function() {
                     });
             
                     const saveData = await saveResponse.json();
-                    chat.removeChild(loading);
                     document.querySelector("input[name='chat']").readOnly = false;
                     document.querySelector("input[name='chat']").value = "";
       
@@ -163,7 +162,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         
       if (type === "application/pdf") {
           try {
-            // x.value = "Loading...";
+
             console.log(file.url);
         
             const response = await fetch(file.url);
@@ -218,7 +217,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     
             if (data.exists === true) {
                 console.log("Embeddings already exist");
-                chat.removeChild(loading);
                 document.querySelector("input[name='chat']").readOnly = false;
                 document.querySelector("input[name='chat']").value = "";
                 return;
@@ -282,28 +280,6 @@ document.addEventListener("DOMContentLoaded", async function() {
             return false;
           }
         }
-
-      if (type === "plain/text") {
-          document.querySelector("input[name='chat']").readOnly = false;
-          document.querySelector("input[name='chat']").value = "";
-
-          const iframe = document.getElementById("pdf-viewer");
-          iframe.style.display = "none";
-
-          const c = document.getElementById("container");
-
-          const text =  document.createElement("p");
-          text.innerHTML = str;
-          text.style.margin = "1rem";
-          text.style.padding = "0";
-          text.style.fontSize = "1.5rem";
-          text.style.fontWeight = "bold";
-          text.style.color = "white";
-          text.style.textAlign = "center";
-
-          // Add text inside container as the first child
-          c.insertBefore(text, c.firstChild);
-      }
     }
 
     async function getGPTModel() {
@@ -362,7 +338,9 @@ document.addEventListener("DOMContentLoaded", async function() {
           return "error";
         }
       }
+      loading.innerHTML = "Done calculating embeddings";
       console.log('Done calculating embeddings');
+      chat.removeChild(loading);
       return df;
     }
 

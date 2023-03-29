@@ -297,15 +297,11 @@ async function handleFileInputChange() {
     // Log the file name, size, and type
     const fileArrayBuffer = await file.arrayBuffer();
 
-    // convert array buffer to string
-    const decoder = new TextDecoder("utf-8");
-    const fileString = decoder.decode(fileArrayBuffer);
-    console.log(fileString);
-
     console.log(file.name, file.size, file.type);
     const file_id = await saveFile(fileArrayBuffer, file.type);
     console.log(file_id);
-    window.location.href = `/viewer?file_id=${file_id}&type=plain/text&str=${fileString}`;
+    type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    window.location.href = `/viewer?file_id=${file_id}&type=${type}`;
   });
   
   pdfInput.addEventListener("change", async function () {
