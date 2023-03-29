@@ -140,7 +140,8 @@ function handleParagraphEllipsis() {
 
 // A function getPageContent that given a url returns the text in the body of the page
 async function getPageContent(url) {
-  const response = await fetch(url);
+  // set the request's mode to 'no-cors' 
+  const response = await fetch(url, { mode: "no-cors" });
   const html = await response.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
@@ -155,6 +156,11 @@ async function handleSubmitEvent() {
     event.preventDefault();
     const url = this.elements["pdf-url"].value;
     if (url === "") {
+        return;
+    }
+
+    if (url.includes("doc")) {
+        window.location.href = `/viewer?url=${url}`;
         return;
     }
 
