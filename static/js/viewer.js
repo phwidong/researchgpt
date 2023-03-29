@@ -49,6 +49,7 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     if (u && u.includes("github")){
       viewer.src = u.replace("github", "github1s");
+      console.log(u)
       return;
     } else if (u && u.includes("doc")) {
       console.log('moose');
@@ -252,6 +253,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                   });
           
                   const saveData = await saveResponse.json();
+
+                  loading = document.getElementById("loading");
                   chat.removeChild(loading);
                   
                   document.querySelector("input[name='chat']").value = "";
@@ -526,9 +529,7 @@ document.addEventListener("DOMContentLoaded", async function() {
             })
         });
         let previousLastToken = '';
-
-        const loading = document.getElementById('loading');
-        chat.removeChild(loading);
+        
         document.querySelector("input[name='chat']").readOnly = false;
         document.querySelector("input[name='chat']").value = "";
 
@@ -599,6 +600,8 @@ document.addEventListener("DOMContentLoaded", async function() {
           chat.appendChild(loading);
 
           const { messages, sources } = await create_prompt(message);
+
+          chat.removeChild(loading);
           await gpt(messages);
           console.log(sources);
 

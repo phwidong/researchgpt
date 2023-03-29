@@ -155,7 +155,7 @@ async def save_file(request: Request, model: str = Header(None), content_type: s
 
     print(content_type)
 
-    if content_type == 'text/plain':
+    if content_type == 'text/plain' or content_type == 'application/x-javascript' or content_type == 'application/json':
         print('File is text')
         text = file.decode('utf-8')
         # print(text)
