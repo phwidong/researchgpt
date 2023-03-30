@@ -49,8 +49,7 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     if (u && u.includes("github")){
       viewer.src = u.replace("github", "github1s");
-      console.log(u)
-      return;
+      console.log(u);
     } else if (u && u.includes("doc")) {
       console.log('moose');
       viewer.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + u;
@@ -417,7 +416,8 @@ document.addEventListener("DOMContentLoaded", async function() {
         console.log(data.df);
         var df = data.df;
       }
-      else {
+      else 
+      {
         const response = await fetch('/get_df', {
           method: 'POST',
           headers: {
@@ -584,6 +584,7 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     send.addEventListener("click", async function(event) {
           event.preventDefault();
+          console.log('Send button clicked');
           const message = document.querySelector("input[name='chat']").value;
           // if the message is empty, do nothing
           if (message === "") {
