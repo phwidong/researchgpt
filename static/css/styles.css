@@ -227,17 +227,48 @@ input[type="text"] {
     width: 100%;
 }
 
+.user {
+  color: white;
+}
+
 #chat p {
-    color: white;
     margin: 10px;
     padding: 10px;
     border-radius: 10px;
     width: fit-content;
     text-align: left;
-    word-break: break-all;
+    word-break: keep-all;
     font-family: Roboto;
     font-size: 18px;
     font-weight: lighter;
+  }
+
+  .code-block {
+    align-self: center;
+    width: 90%;
+    background-color: rgb(18, 19, 19);
+    padding: 10px;
+    border-radius: 5px;
+    margin-left: 12px;
+    margin-right: 12px;
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+
+.code-block pre {
+    display: initial;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+.code-block code {
+    font-family: monospace;
+    font-size: 14px;
+}
+
+
+  .ai {
+    color: lightgrey;
   }
 
   .navbar {

@@ -12,20 +12,17 @@ document.addEventListener("DOMContentLoaded", async function() {
     const send = document.querySelector("#send");
     const chat = document.querySelector("#chat");
 
-    container.style.display = "flex";
+    // Get the dropdown and the preview element
+    const dropdown = document.getElementById('name-dropdown');
+    const preview = document.getElementById('selected-name-preview');
 
-    loading = document.createElement("p");
-    loading.id = "loading";
-    loading.style.color = "lightgray";
-    loading.style.fontSize = "14px";
-    loading.innerHTML = "";
-    chat.appendChild(loading);
+    container.style.display = "flex";
 
     var m = await getGPTModel();
     
     window.onload = async function() {
       // check if the user has already saved an API key
-      if (sessionStorage.getItem("openai_key") === null) {
+      if (localStorage.getItem("openai_key") === null) {
         var input = prompt("Please enter your Open AI api key. Don't worry, it will be saved only in your browser's local storage.");
         // if the field is empty, show the prompt again
         if (input === "") {
@@ -38,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         if (input === null) {
           return;
         }
-        sessionStorage.setItem("openai_key", input);
+        localStorage.setItem("openai_key", input);
         alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
       }
       else {
@@ -47,17 +44,95 @@ document.addEventListener("DOMContentLoaded", async function() {
       }
     };
 
+
     if (u && u.includes("github")){
-      viewer.src = u.replace("github", "github1s");
-      console.log(u);
+      // Call the fetchFileNames function when the page loads
+      git = await fetchGitNames(u);
+      console.log(git);
+
+      currentFile = git.current_file;
+      // A list of all the files in the repo
+      files = git.files; 
+      console.log(files);
+      // A dictionary of all the files in the repo and their URLs {file: url}
+      file_urls = git.file_urls;
+      console.log(file_urls);
+      // A dictionary of all the files in the repo and their raw URLs {file: raw_url}
+      raw_urls = git.raw_urls;
+      console.log(raw_urls);
+
+      // Add an event listener to update the preview when the selected file changes
+      dropdown.addEventListener('change', async function() {
+        preview.textContent = this.value ? `Selected File: ${this.value}` : '';
+        console.log(this.value);
+        currentFile = this.value;
+        viewer.src = 'https://github1s.com/' + file_urls[currentFile].split("github.com/")[1];
+        rawURL = raw_urls[currentFile];
+        sessionStorage.setItem("url", rawURL);
+      });
+      
+      if (currentFile) {
+        dropdown.value = currentFile;
+        currentURL = file_urls[currentFile];
+        console.log("URL contains a file");
+        viewer.src = 'https://github1s.com/' + currentURL.split("github.com/")[1];
+        rawURL = raw_urls[currentFile];
+        sessionStorage.setItem("url", rawURL);
+      } 
+      else {
+        console.log("URL does not contain a file");
+        viewer.src = 'https://github1s.com/' + u.split("github.com/")[1];
+      }
+    
     } else if (u && u.includes("doc")) {
+      // Remove the dropdown and the preview element
+      dropdown.remove();
+      preview.remove();
       console.log('moose');
       viewer.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + u;
     } else if (u && !u.includes("github") && !u.includes("doc") && !u.includes("pdf")) {
+      // Remove the dropdown and the preview element
+      dropdown.remove();
+      preview.remove();
       console.log('duck');
       viewer.src = u;
     } else {
+      // Remove the dropdown and the preview element
+      dropdown.remove();
+      preview.remove();
       download();
+    }
+
+
+    async function fetchGitNames(url) {
+      try {
+        const response = await fetch('/git', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url }),
+          });
+        const data = await response.json();
+        const fileNames = data.files; // Assuming the response has a 'files' property with the file names
+
+        // Clear existing options except the first one
+        for (let i = dropdown.options.length - 1; i > 0; i--) {
+          dropdown.remove(i);
+        }
+
+        // Populate the dropdown with received file names
+        fileNames.forEach(fileName => {
+          const option = document.createElement('option');
+          option.value = fileName;
+          option.textContent = fileName;
+          dropdown.appendChild(option);
+        });
+
+        return data;
+      } catch (error) {
+        console.error('Error fetching file names:', error);
+      }
     }
 
     async function download(){
@@ -150,7 +225,6 @@ document.addEventListener("DOMContentLoaded", async function() {
               } catch (error) {
                 console.log(error);
                 console.log("Embeddings could not be calculated");
-                loading.innerHTML = "Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!";
                 alert("Error: Your OpenAI API key might invalid. Please make sure you entered your key correctly. If you would like to set it again, please close the tab and try again. Sorry for the inconvenience!");
                 return false;   
               }
@@ -252,9 +326,6 @@ document.addEventListener("DOMContentLoaded", async function() {
                   });
           
                   const saveData = await saveResponse.json();
-
-                  loading = document.getElementById("loading");
-                  chat.removeChild(loading);
                   
                   document.querySelector("input[name='chat']").value = "";
                   document.querySelector("input[name='chat']").readOnly = false;
@@ -289,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         const response = await fetch('https://api.openai.com/v1/models/gpt-4', {
           method: 'GET',
           headers: {
-            'Authorization': 'Bearer ' + sessionStorage.getItem("openai_key"),
+            'Authorization': 'Bearer ' + localStorage.getItem("openai_key"),
             'Content-Type': 'application/json'
             }
           });
@@ -306,9 +377,13 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     async function embeddings(df) {
       console.log('Calculating embeddings');
-      loading = document.getElementById("loading");
+      const loading = document.createElement("p");
+      loading.id = "loading";
+      loading.style.color = "lightgray";
+      loading.style.fontSize = "14px";
       loading.innerHTML = "Calculating embeddings...";
-      const openaiApiKey = sessionStorage.getItem("openai_key");
+      chat.appendChild(loading);
+      const openaiApiKey = localStorage.getItem("openai_key");
       const embeddingModel = "text-embedding-ada-002";
       df = JSON.parse(df);
     
@@ -361,7 +436,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     async function search(df, query, n=3, pprint=true) {
-      const openaiApiKey = sessionStorage.getItem("openai_key");
+      const openaiApiKey = localStorage.getItem("openai_key");
       const embeddingModel = "text-embedding-ada-002";
       const queryEmbeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
         method: 'POST',
@@ -394,7 +469,22 @@ document.addEventListener("DOMContentLoaded", async function() {
         results,
         sources
       };
-    }  
+    }
+
+    async function getRawFileContents(rawUrl) {
+      try {
+        const response = await fetch(rawUrl);
+        data = await response.text(); // Use .text() instead of .json() since it's a raw file
+        // If data exceeds 25000 characters, throw an error
+        if (data.length > 25000) {
+          data = "The file contents exceed 25000 characters. Please try again with a different file. Sorry for the inconvenience. Mention that we are working on a fix!"
+          alert('Error fetching file contents: File contents exceed 25000 characters');
+        }
+        return data;
+      } catch (error) {
+        console.error('Error fetching file contents:'+error);
+      }
+    }
 
     async function create_prompt(user_input) {
       console.log("Creating prompt");
@@ -409,12 +499,40 @@ document.addEventListener("DOMContentLoaded", async function() {
       const u = urlParams.get('url');
       console.log(u);
       
-      if (u) {
+      if (u && !u.includes("github")) {
         console.log("cat");
         const response = await fetch(`/get_file/${file_id}`);
         var data = await response.json();
         console.log(data.df);
         var df = data.df;
+      }
+      else if ((viewer.src).includes('github')) {
+        console.log("dog");
+        rawURL = sessionStorage.getItem("url");
+        code = await getRawFileContents(rawURL);
+
+        const systemRole = `You are a friendly coding assistant. Here is a file from Github:
+        
+        ${code}
+
+        Please answer any questions the user has about the code.`;
+
+        const userContent = user_input;
+
+        const messages = [
+          { role: "system", content: systemRole },
+          ];
+
+        if (userContent) {
+              messages.push({ role: "user", content: userContent });
+          }
+        
+        const sources = {}
+
+        console.log('Done creating prompt for Github');
+        console.log({ messages, sources });
+        return { messages, sources };
+
       }
       else 
       {
@@ -475,34 +593,77 @@ document.addEventListener("DOMContentLoaded", async function() {
       return { messages, sources };
     }
 
+    let codeBlockState = false;
+    let partialCodeBlockDelimiter = '';
+    let codeBlockDiv = null;
+    
     function addMessage(text, sender) {
         console.log(`Adding message: ${text}, sender: ${sender}`);
     
-        if (sender === 'ai') {
-            // Append the text to the last <p> element
-            const lastMessage = chat.lastElementChild;
-            if (lastMessage && lastMessage.className === 'ai') {
-                // Check if the text is a punctuation mark
-                const isPunctuation = /^[.,;?!]+$/.test(text);
-                lastMessage.innerHTML += isPunctuation ? text : text;
+        // Check for partial code block delimiters
+        if (partialCodeBlockDelimiter) {
+            text = partialCodeBlockDelimiter + text;
+            partialCodeBlockDelimiter = '';
+        }
+    
+        // Check if the text starts or ends a code block
+        while (text.includes("```")) {
+            codeBlockState = !codeBlockState;
+    
+            if (codeBlockState) {
+                codeBlockDiv = document.createElement("div");
+                codeBlockDiv.className = "code-block";
+                chat.appendChild(codeBlockDiv);
             } else {
-                // Create a new <p> element if the last message is not from 'ai'
+                codeBlockDiv = null;
+            }
+    
+            text = text.replace("```", "");
+        }
+    
+        // Check for partial code block delimiters at the end of the text
+        const partialDelimiterCount = text.match(/`+$/)?.[0]?.length || 0;
+        if (partialDelimiterCount > 0) {
+            partialCodeBlockDelimiter = text.slice(-partialDelimiterCount);
+            text = text.slice(0, -partialDelimiterCount);
+        }
+    
+        const formattedText = codeBlockState ? `<pre><code>${text}</code></pre>` : text;
+    
+        if (codeBlockState) {
+            const preElement = document.createElement("pre");
+            const codeElement = document.createElement("code");
+            codeElement.innerHTML = text;
+            preElement.appendChild(codeElement);
+            codeBlockDiv.appendChild(preElement);
+        } else {
+            if (sender === 'ai') {
+                // Append the text to the last <p> element
+                const lastMessage = chat.lastElementChild;
+                if (lastMessage && lastMessage.className === 'ai') {
+                    // Check if the text is a punctuation mark
+                    const isPunctuation = /^[.,;?!]+$/.test(text);
+                    lastMessage.innerHTML += isPunctuation ? text : formattedText;
+                } else {
+                    // Create a new <p> element if the last message is not from 'ai'
+                    const message = document.createElement("p");
+                    message.className = sender;
+                    message.innerHTML = formattedText;
+                    chat.style.color = "lightgray";
+                    chat.appendChild(message);
+                }
+            } else {
+                // Create a new <p> element for other senders
                 const message = document.createElement("p");
                 message.className = sender;
-                message.innerHTML = text;
-                chat.style.color = "lightgray";
+                message.innerHTML = formattedText;
                 chat.appendChild(message);
             }
-        } else {
-            // Create a new <p> element for other senders
-            const message = document.createElement("p");
-            message.className = sender;
-            message.innerHTML = text;
-            chat.appendChild(message);
         }
         chat.scrollTop = chat.scrollHeight;
     }
-
+    
+  
     async function gpt(messages) {
 
         console.log('Sending request to OpenAI');
@@ -510,7 +671,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         console.log('messages: ', messages);
         console.log('model: ', m);
 
-        const openaiApiKey = sessionStorage.getItem("openai_key");
+        const openaiApiKey = localStorage.getItem("openai_key");
         const response = await fetch('https://api.openai.com/v1/chat/completions?stream=true', {
             method: 'POST',
             headers: {
@@ -520,7 +681,6 @@ document.addEventListener("DOMContentLoaded", async function() {
             body: JSON.stringify({
                 messages: messages,
                 model: m,
-                max_tokens: 1500,
                 n: 1,
                 temperature: 0.4,
                 frequency_penalty: 0,

@@ -143,7 +143,60 @@ async def grid(request: Request):
 @app.post("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-        
+
+def get_repo_info(url):
+    # Extract the repo name, owner, and branch from the URL
+    url_parts = url.rstrip("/").split("/")
+    current_file = None
+
+    if "blob" in url_parts:
+        repo_index = url_parts.index("blob") - 1
+        owner, repo_name, branch = url_parts[repo_index - 1], url_parts[repo_index], url_parts[repo_index + 2]
+        current_file = "/".join(url_parts[repo_index + 3:])
+    else:
+        owner, repo_name = url_parts[-2:]
+        branch = "main"
+
+    # Define the API URL for the repo
+    api_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/trees/{branch}?recursive=1"
+
+    # Send a request to the GitHub API
+    response = requests.get(api_url)
+
+    # Raise an exception if the request fails
+    response.raise_for_status()
+
+    # Extract the JSON data from the response
+    data = response.json()
+
+    # Extract the file paths from the JSON data
+    files = [item["path"] for item in data["tree"] if item["type"] == "blob"]
+
+    # Construct the repo URL
+    repo_url = f"https://github.com/{owner}/{repo_name}"
+
+    # Construct the file URLs as a dictionary of {file: url}
+    file_urls = {file: f"{repo_url}/blob/{branch}/{file}" for file in files}
+
+    # Construct the raw.githubusercontent.com URLs as a dictionary of {file: raw_url}
+    raw_urls = {file: f"https://raw.githubusercontent.com/{owner}/{repo_name}/{branch}/{file}" for file in files}
+
+    return {
+        "repo_url": repo_url,
+        "branch": branch,
+        "current_file": current_file,
+        "files": files,
+        "file_urls": file_urls,
+        "raw_urls": raw_urls,
+    }
+
+@app.post("/git")
+async def git_endpoint(request: Request):
+    # Extract the URL from the request
+    data = await request.json()
+    url = data['url']
+    repo_info = get_repo_info(url)
+    return repo_info
 
 @app.post('/save_file')
 async def save_file(request: Request, model: str = Header(None), content_type: str = Header(None)):
@@ -429,8 +482,7 @@ async def download_pdf(request: Request):
     print('duck')
 
     for blob in container_client.list_blobs():
-        print(blob.name)
-        if blob.name == str(blob_name):
+        if str(blob.name+'.json') == str(blob_name+'.json'):
             print('blob exists')
             blob_exists = True
             break

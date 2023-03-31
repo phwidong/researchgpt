@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("save-openai-key").addEventListener("click", function () {
     var openaiKey = document.getElementById("openai-key").value;
     if (openaiKey) {
-      sessionStorage.setItem("openai_key", openaiKey);
+      localStorage.setItem("openai_key", openaiKey);
       document.getElementById("openai-key").value = "Saved!"
       document.getElementById("openai-key").value = "";
     } else {
@@ -164,7 +164,7 @@ async function handleSubmitEvent() {
         return;
     }
 
-    if (!url.endsWith(".pdf")) {
+    if (!url.endsWith(".pdf") && !url.endsWith(".txt") && !url.includes("github")) {
         text = await getPageContent(url);
         console.log(text);
 
@@ -226,7 +226,7 @@ async function handleSubmitEvent() {
 
 window.onload = function() {
   // check if the user has already saved an API key
-  if (sessionStorage.getItem("openai_key") === null) {
+  if (localStorage.getItem("openai_key") === null) {
     var input = prompt("Please enter your Open AI api key. Don't worry, it will be saved only in your browser's local storage.");
     // if the field is empty, show the prompt again
     if (input === "") {
@@ -239,7 +239,7 @@ window.onload = function() {
     if (input === null) {
       return;
     }
-    sessionStorage.setItem("openai_key", input);
+    localStorage.setItem("openai_key", input);
     alert("Thank you! Your key has been saved safely in your browser's local storage. You can now use the chatbot.");
   }
   else {
@@ -253,7 +253,7 @@ async function getGPTModel() {
     const response = await fetch('https://api.openai.com/v1/models/gpt-4', {
       method: 'GET',
       headers: {
-        'Authorization': 'Bearer ' + sessionStorage.getItem("openai_key"),
+        'Authorization': 'Bearer ' + localStorage.getItem("openai_key"),
         'Content-Type': 'application/json'
         }
       });

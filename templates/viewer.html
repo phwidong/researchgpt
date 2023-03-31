@@ -10,6 +10,13 @@
     <div id="container">
         <iframe id="pdf-viewer" class="pdf-viewer" style="border-width: 0"></iframe> 
         <div style="width: 40%; height: 100vh; border: none; background-color: black; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+            <div style="width: 100%; display: flex; flex-direction: column; align-items: center; background-color: black;">
+              <select id="name-dropdown" style="margin-top: 10px;width: 80%; background-color: black; color: azure; text-align: center;">
+                <option value="">Select a name</option>
+                <!-- Add names as options here -->
+              </select>
+              <div id="selected-name-preview" style="margin-top: 10px; color: gray;"></div>
+            </div>
             <div id="chat" style="height: 100%; overflow-y: scroll; background-color: black;">
               <!-- Chat messages go here -->
             </div>
