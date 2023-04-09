@@ -6,7 +6,9 @@ Try the demo at: https://www.dara.chat
 
 ## Example 
 
-https://user-images.githubusercontent.com/36257370/218764852-32b79201-4767-4684-980a-73aa81e7d72a.mp4
+
+https://user-images.githubusercontent.com/36257370/230793133-ecb579d3-47d9-4200-916a-9c5978a40b09.mp4
+
 
 ## Installation
 
